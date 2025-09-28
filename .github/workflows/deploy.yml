@@ -26,7 +26,7 @@ jobs:
         run: |
           echo ${{ secrets.SSH_USERNAME }}
           ssh root@${{ secrets.SSH_HOST }} << 'EOF'
-            cd /root/spasskaya
+            cd /root/spasskaya_bot
             git reset --hard HEAD
             git clean -fd
             git pull origin main
