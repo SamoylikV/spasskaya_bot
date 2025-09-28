@@ -3,7 +3,7 @@ import logging
 import asyncpg
 from datetime import datetime
 from aiogram import Bot, Dispatcher, Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
@@ -30,23 +30,31 @@ class RoomInput(StatesGroup):
     waiting_room = State()
 
 
+class UserAppeal(StatesGroup):
+    waiting_text = State()
+
+
 
 async def show_main_menu(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📩 Обращение (ресепшен)", callback_data="menu_appeal")],
-        [InlineKeyboardButton(text="🛎 Бронирование (пока недоступно)", callback_data="menu_booking")],
+        # [InlineKeyboardButton(text="🛎 Бронирование (пока недоступно)", callback_data="menu_booking")],
         [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")]
     ])
     await message.answer("Добро пожаловать! Выберите действие:", reply_markup=keyboard)
 
 
-async def show_user_menu_after_room(message: Message):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛏 Убраться в номере", callback_data="task_clean")],
-        [InlineKeyboardButton(text="🍴 Принести еду", callback_data="task_food")],
-        [InlineKeyboardButton(text="⚙ Другое обращение", callback_data="task_other")]
-    ])
-    await message.answer("Выберите тип обращения:", reply_markup=keyboard)
+async def show_user_menu_after_room(message: Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🛏 Убраться в номере")],
+            [KeyboardButton(text="🍴 Принести еду")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+    await state.set_state(UserAppeal.waiting_text)
+    await message.answer("Напишите ваше обращение или выберите из готовых вариантов:", reply_markup=keyboard)
 
 
 @router.message(Command("start"))
@@ -108,21 +116,45 @@ async def help_cmd(message: Message):
                          "Для обращения сначала укажите номер комнаты через /start 101 или при запросе.")
 
 
-@router.callback_query(F.data.startswith("task_"))
-async def task_chosen(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    user_id = callback.from_user.id
-    username = callback.from_user.username or str(user_id)
+# @router.callback_query(F.data.startswith("task_"))
+# async def task_chosen(callback: CallbackQuery, state: FSMContext):
+#     await callback.answer()
+#     user_id = callback.from_user.id
+#     username = callback.from_user.username or str(user_id)
+#     data = await state.get_data()
+#     room = data.get("room", "не указан")
+
+#     text_map = {
+#         "task_clean": "Убраться в номере",
+#         "task_food": "Принести еду",
+#         "task_other": "Другое обращение"
+#     }
+#     key = callback.data
+#     text = text_map.get(key, "Другое обращение")
+
+#     appeal_id = await create_appeal(user_id, username, room, text)
+#     await add_message(appeal_id, "user", text)
+
+#     keyboard = InlineKeyboardMarkup(inline_keyboard=[
+#         [
+#             InlineKeyboardButton(text="✅ Получено", callback_data=f"admin_status:{appeal_id}:received"),
+#             InlineKeyboardButton(text="❌ Отказано", callback_data=f"admin_status:{appeal_id}:declined"),
+#             InlineKeyboardButton(text="✔ Выполнено", callback_data=f"admin_status:{appeal_id}:done"),
+#             InlineKeyboardButton(text="✉ Ответить", callback_data=f"admin_reply:{appeal_id}")
+#         ]
+#     ])
+
+#     await bot.send_message(ADMIN_ID, f"📩 Новое обращение от @{username} (комната {room})\n📝 {text}", reply_markup=keyboard)
+#     await callback.message.answer("Ваше обращение отправлено ✅")
+
+@router.message(UserAppeal.waiting_text)
+async def user_appeal_text(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    username = message.from_user.username or str(user_id)
     data = await state.get_data()
     room = data.get("room", "не указан")
 
-    text_map = {
-        "task_clean": "Убраться в номере",
-        "task_food": "Принести еду",
-        "task_other": "Другое обращение"
-    }
-    key = callback.data
-    text = text_map.get(key, "Другое обращение")
+    text = message.text.strip()
 
     appeal_id = await create_appeal(user_id, username, room, text)
     await add_message(appeal_id, "user", text)
@@ -136,9 +168,14 @@ async def task_chosen(callback: CallbackQuery, state: FSMContext):
         ]
     ])
 
-    await bot.send_message(ADMIN_ID, f"📩 Новое обращение от @{username} (комната {room})\n📝 {text}", reply_markup=keyboard)
-    await callback.message.answer("Ваше обращение отправлено ✅")
+    await bot.send_message(
+        ADMIN_ID,
+        f"📩 Новое обращение от @{username} (комната {room})\n📝 {text}",
+        reply_markup=keyboard
+    )
 
+    await message.answer("Ваше обращение отправлено ✅", reply_markup=ReplyKeyboardRemove())
+    await state.clear()
 
 @router.message(Command("admin"))
 async def admin_menu(message: Message):
