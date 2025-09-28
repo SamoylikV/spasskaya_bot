@@ -10,8 +10,8 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
 COPY config.py .
+COPY .env .
 COPY bot/ ./bot/
 COPY db/ ./db/
 ENV PYTHONPATH=/app
