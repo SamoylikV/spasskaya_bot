@@ -24,9 +24,6 @@ services:
       db:
         condition: service_healthy
     restart: always
-    volumes:
-      - .:/app
-    command: python bot/main.py
 
 volumes:
   pgdata:
