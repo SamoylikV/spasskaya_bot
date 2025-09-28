@@ -3,7 +3,7 @@ import logging
 import asyncpg
 from datetime import datetime
 from aiogram import Bot, Dispatcher, Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
