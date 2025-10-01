@@ -579,16 +579,17 @@ async def admin_set_status(callback: CallbackQuery):
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="❗ Вопрос не решили", callback_data=f"user_reopen:{appeal_id}")]
                 ])
-                await bot.send_message(
+                await temp_bot.send_message(
                     user_id, 
                     f"📬 Ваше обращение #{appeal_id} {status_msg}", 
                     reply_markup=keyboard
                 )
             else:
-                await bot.send_message(
+                await temp_bot.send_message(
                     user_id, 
                     f"📬 Статус вашего обращения #{appeal_id} {status_msg}"
                 )
+            await temp_bot.session.close()
         
         await callback.message.answer(f"✅ Статус обращения {appeal_id} изменён на '{status}'.")
         
@@ -642,18 +643,19 @@ async def send_admin_reply(message: Message, state: FSMContext):
         
         from aiogram import Bot
         from config import TOKEN
-        bot = Bot(TOKEN)
+        temp_bot = Bot(TOKEN)
         
         reply_keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="✉️ Ответить", callback_data=f"user_reply:{appeal_id}")]
         ])
         
-        await bot.send_message(
+        await temp_bot.send_message(
             user_id, 
             f"📢 **Ответ администратора на обращение #{appeal_id}:**\n\n{message.text}",
             reply_markup=reply_keyboard,
             parse_mode="Markdown"
         )
+        await temp_bot.session.close()
         
         await add_message(appeal_id, "admin", message.text)
         
