@@ -6,7 +6,9 @@ from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKe
 from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db.db import (
     get_appeals, get_appeal_with_messages, update_status, add_message,
     add_admin, remove_admin, is_admin, get_all_admins, get_appeals_stats,
