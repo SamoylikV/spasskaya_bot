@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TOKEN, ADMIN_ID, DB_URL
-from db.db import create_appeal, add_message, get_appeals, update_status, init_db, is_admin, add_admin
+from db.db import create_appeal, add_message, get_appeals, update_status, init_db, is_admin, add_admin, can_user_reply
 from bot.admin_panel import admin_router
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +33,10 @@ class RoomInput(StatesGroup):
 
 
 class UserAppeal(StatesGroup):
+    waiting_text = State()
+
+
+class UserReply(StatesGroup):
     waiting_text = State()
 
 
@@ -192,6 +196,66 @@ async def user_reopen(callback: CallbackQuery):
     await update_status(appeal_id, "new")
     await bot.send_message(ADMIN_ID, f"⚠ Пользователь переоткрыл обращение ID {appeal_id}")
     await callback.message.answer("Мы снова передали ваше обращение администратору ✅")
+
+@router.callback_query(F.data.startswith("user_reply:"))
+async def start_user_reply(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    try:
+        _, appeal_id = callback.data.split(":")
+        appeal_id = int(appeal_id)
+    except Exception:
+        await callback.answer("Неправильный ID.", show_alert=True)
+        return
+    
+    can_reply = await can_user_reply(appeal_id, callback.from_user.id)
+    if not can_reply:
+        await callback.answer("Вы можете ответить только один раз на сообщение админа.", show_alert=True)
+        return
+    
+    await state.update_data(appeal_id=appeal_id)
+    await state.set_state(UserReply.waiting_text)
+    
+    await callback.message.answer(
+        f"✉️ **Ответ на обращение #{appeal_id}**\n\nНапишите ваш ответ:",
+        parse_mode="Markdown"
+    )
+
+@router.message(UserReply.waiting_text)
+async def send_user_reply(message: Message, state: FSMContext):
+    data = await state.get_data()
+    appeal_id = data.get("appeal_id")
+    
+    if not appeal_id:
+        await message.answer("Ошибка. Попробуйте ещё раз.")
+        await state.clear()
+        return
+    
+    try:
+        await add_message(appeal_id, "user", message.text)
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Получено", callback_data=f"admin_status:{appeal_id}:received"),
+                InlineKeyboardButton(text="❌ Отказано", callback_data=f"admin_status:{appeal_id}:declined"),
+                InlineKeyboardButton(text="✔ Выполнено", callback_data=f"admin_status:{appeal_id}:done"),
+                InlineKeyboardButton(text="✉ Ответить", callback_data=f"admin_reply:{appeal_id}")
+            ]
+        ])
+        
+        await bot.send_message(
+            ADMIN_ID,
+            f"💬 **Ответ пользователя на обращение #{appeal_id}:**\nОт: @{message.from_user.username or message.from_user.id}\n\n{message.text}",
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+        
+        await message.answer("✅ Ваш ответ отправлен администратору.")
+        
+    except Exception as e:
+        logger.error(f"Ошибка отправки ответа: {e}")
+        await message.answer("Ошибка при отправке ответа.")
+    
+    await state.clear()
 
 
 

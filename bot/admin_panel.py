@@ -643,9 +643,16 @@ async def send_admin_reply(message: Message, state: FSMContext):
         from aiogram import Bot
         from config import TOKEN
         bot = Bot(TOKEN)
+        
+        reply_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✉️ Ответить", callback_data=f"user_reply:{appeal_id}")]
+        ])
+        
         await bot.send_message(
             user_id, 
-            f"📢 **Ответ администратора на обращение #{appeal_id}:**\n\n{message.text}"
+            f"📢 **Ответ администратора на обращение #{appeal_id}:**\n\n{message.text}",
+            reply_markup=reply_keyboard,
+            parse_mode="Markdown"
         )
         
         await add_message(appeal_id, "admin", message.text)

@@ -235,3 +235,28 @@ async def bulk_update_status(appeal_ids, status):
     finally:
         await conn.close()
 
+
+async def can_user_reply(appeal_id, user_id):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        appeal = await conn.fetchrow("SELECT user_id FROM appeals WHERE id=$1", appeal_id)
+        if not appeal or appeal['user_id'] != user_id:
+            return False
+        
+        last_admin_msg = await conn.fetchrow(
+            "SELECT id FROM messages WHERE appeal_id=$1 AND sender='admin' ORDER BY created_at DESC LIMIT 1", 
+            appeal_id
+        )
+        if not last_admin_msg:
+            return False
+        
+        user_reply_after_admin = await conn.fetchrow(
+            "SELECT id FROM messages WHERE appeal_id=$1 AND sender='user' AND created_at > (SELECT created_at FROM messages WHERE id=$2)",
+            appeal_id, last_admin_msg['id']
+        )
+        
+        return user_reply_after_admin is None
+        
+    finally:
+        await conn.close()
+
