@@ -62,7 +62,7 @@ async def start(message: Message, command: CommandObject, state: FSMContext):
     args = command.args
     if args and args.isdigit():
         await state.update_data(room=args)
-        await show_user_menu_after_room(message)
+        await show_user_menu_after_room(message, state)
         return
 
     await show_main_menu(message)
@@ -74,7 +74,7 @@ async def menu_appeal(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     room = data.get("room")
     if room:
-        await show_user_menu_after_room(callback.message)
+        await show_user_menu_after_room(callback.message, state)
     else:
         await callback.message.answer("Введите номер комнаты (числом):")
         await state.set_state(RoomInput.waiting_room)
@@ -97,8 +97,7 @@ async def get_room(message: Message, state: FSMContext):
         await message.answer("❌ Номер комнаты должен быть числом. Попробуйте ещё раз или отправьте /cancel.")
         return
     await state.update_data(room=message.text)
-    await state.clear()
-    await show_user_menu_after_room(message)
+    await show_user_menu_after_room(message, state)
 
 
 @router.message(Command("cancel"))
@@ -314,7 +313,8 @@ async def send_admin_reply(message: Message, state: FSMContext):
 
 
 @dp.errors()
-async def global_error_handler(update, exception):
+async def global_error_handler(event, data):
+    exception = data.get('exception')
     logger.exception("Ошибка при обработке апдейта: %s", exception)
 
 
