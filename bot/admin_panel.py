@@ -527,7 +527,9 @@ async def admin_set_status(callback: CallbackQuery):
     try:
         user_id = await update_status(appeal_id, status)
         if user_id:
-            from bot.main import bot
+            from aiogram import Bot
+            from config import TOKEN
+            bot = Bot(TOKEN)
             
             status_messages = {
                 'received': 'получено в работу ✅',
@@ -602,7 +604,9 @@ async def send_admin_reply(message: Message, state: FSMContext):
         
         user_id = appeal["user_id"]
         
-        from bot.main import bot
+        from aiogram import Bot
+        from config import TOKEN
+        bot = Bot(TOKEN)
         await bot.send_message(
             user_id, 
             f"📢 **Ответ администратора на обращение #{appeal_id}:**\n\n{message.text}"

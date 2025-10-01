@@ -12,7 +12,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TOKEN, ADMIN_ID, DB_URL
 from db.db import create_appeal, add_message, get_appeals, update_status, init_db, is_admin, add_admin
-from admin_panel import admin_router
+from bot.admin_panel import admin_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
