@@ -11,7 +11,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TOKEN, ADMIN_ID, DB_URL
-from db.db import create_appeal, add_message, get_appeals, update_status, init_db
+from db.db import create_appeal, add_message, get_appeals, update_status, init_db, is_admin, add_admin
+from admin_panel import admin_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ bot = Bot(TOKEN)
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
+dp.include_router(admin_router)
 
 
 class AdminReply(StatesGroup):
@@ -176,85 +178,6 @@ async def user_appeal_text(message: Message, state: FSMContext):
     await message.answer("Ваше обращение отправлено ✅", reply_markup=ReplyKeyboardRemove())
     await state.clear()
 
-@router.message(Command("admin"))
-async def admin_menu(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📂 Все обращения", callback_data="admin_all")],
-        [InlineKeyboardButton(text="📂 Только открытые", callback_data="admin_open")],
-        [InlineKeyboardButton(text="📂 Только закрытые", callback_data="admin_closed")],
-        [InlineKeyboardButton(text="ℹ Статистика", callback_data="admin_stats")]
-    ])
-    await message.answer("Админ меню:", reply_markup=keyboard)
-
-
-@router.callback_query(F.data.in_(["admin_all", "admin_open", "admin_closed", "admin_stats"]))
-async def show_appeals(callback: CallbackQuery):
-    await callback.answer()
-    if callback.data == "admin_stats":
-        conn = await asyncpg.connect(DB_URL)
-        try:
-            total = await conn.fetchval("SELECT COUNT(*) FROM appeals")
-            open_cnt = await conn.fetchval("SELECT COUNT(*) FROM appeals WHERE status='new'")
-            done_cnt = await conn.fetchval("SELECT COUNT(*) FROM appeals WHERE status='done'")
-        finally:
-            await conn.close()
-        await callback.message.answer(f"Статистика\nВсего: {total}\nОткрытых: {open_cnt}\nЗакрытых: {done_cnt}")
-        return
-
-    status = None
-    if callback.data == "admin_open":
-        status = "new"
-    elif callback.data == "admin_closed":
-        status = "done"
-
-    appeals = await get_appeals(status=status)
-    if not appeals:
-        await callback.message.answer("Обращений нет.")
-        return
-    for a in appeals:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Получено", callback_data=f"admin_status:{a['id']}:received"),
-                InlineKeyboardButton(text="❌ Отказано", callback_data=f"admin_status:{a['id']}:declined"),
-                InlineKeyboardButton(text="✔ Выполнено", callback_data=f"admin_status:{a['id']}:done"),
-                InlineKeyboardButton(text="✉ Ответить", callback_data=f"admin_reply:{a['id']}")
-            ]
-        ])
-        created = a["created_at"]
-        created_str = created.strftime("%Y-%m-%d %H:%M:%S") if isinstance(created, datetime) else str(created)
-        await callback.message.answer(
-            f"📨 ID:{a['id']} | @{a['username']} | Комната: {a['room']}\n📝 {a['text']}\n📌 Статус: {a['status']}\n📅 {created_str}",
-            reply_markup=keyboard
-        )
-
-
-@router.callback_query(F.data.startswith("admin_status:"))
-async def admin_set_status(callback: CallbackQuery):
-    await callback.answer()
-    try:
-        _, appeal_id, status = callback.data.split(":")
-    except ValueError:
-        await callback.message.answer("Неправильный формат команды.")
-        return
-
-    try:
-        appeal_id = int(appeal_id)
-    except ValueError:
-        await callback.message.answer("Неправильный ID обращения.")
-        return
-
-    user_id = await update_status(appeal_id, status)
-    if user_id:
-        if status == "done":
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="❗ Вопрос не решили", callback_data=f"user_reopen:{appeal_id}")]
-            ])
-            await bot.send_message(user_id, f"Ваше обращение закрыто как '{status}'", reply_markup=keyboard)
-        else:
-            await bot.send_message(user_id, f"Статус вашего обращения изменён: {status}")
-    await callback.message.answer(f"Статус обращения {appeal_id} обновлён на {status}.")
 
 
 @router.callback_query(F.data.startswith("user_reopen:"))
@@ -271,45 +194,6 @@ async def user_reopen(callback: CallbackQuery):
     await callback.message.answer("Мы снова передали ваше обращение администратору ✅")
 
 
-@router.callback_query(F.data.startswith("admin_reply:"))
-async def start_admin_reply(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    try:
-        _, appeal_id = callback.data.split(":")
-        appeal_id = int(appeal_id)
-    except Exception:
-        await callback.message.answer("Неправильный ID обращения.")
-        return
-    await state.update_data(appeal_id=appeal_id)
-    await callback.message.answer("Введите текст ответа пользователю:")
-    await state.set_state(AdminReply.waiting_text)
-
-
-@router.message(AdminReply.waiting_text)
-async def send_admin_reply(message: Message, state: FSMContext):
-    data = await state.get_data()
-    appeal_id = data.get("appeal_id")
-    if not appeal_id:
-        await message.answer("ID обращения не найден. Пожалуйста, заново выберите обращение через /admin.")
-        await state.clear()
-        return
-
-    conn = await asyncpg.connect(DB_URL)
-    try:
-        row = await conn.fetchrow("SELECT user_id FROM appeals WHERE id=$1", appeal_id)
-    finally:
-        await conn.close()
-
-    if not row:
-        await message.answer("Пользователь не найден.")
-        await state.clear()
-        return
-
-    user_id = row["user_id"]
-    await bot.send_message(user_id, f"📢 Сообщение от администратора:\n\n{message.text}")
-    await add_message(appeal_id, "admin", message.text)
-    await state.clear()
-    await message.answer("Сообщение отправлено пользователю ✅")
 
 
 @dp.errors()
@@ -321,6 +205,14 @@ async def global_error_handler(event, data):
 async def main():
     logger.info("Инициализация БД...")
     await init_db()
+    
+    try:
+        if ADMIN_ID:
+            await add_admin(int(ADMIN_ID), "main_admin", "super_admin")
+            logger.info(f"Главный админ {ADMIN_ID} добавлен в систему")
+    except Exception as e:
+        logger.warning(f"Не удалось добавить главного админа: {e}")
+    
     logger.info("Запуск polling...")
     await dp.start_polling(bot)
 
