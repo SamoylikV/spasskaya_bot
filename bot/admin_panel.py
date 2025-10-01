@@ -201,16 +201,25 @@ async def show_appeals_paged(callback: CallbackQuery):
         await callback.message.edit_text("📂 Обращений нет.")
         return
     
-    message_text = f"📂 **Обращения** (стр. {page}/{total_pages}, всего: {total_count})\n\n"
+    await callback.message.edit_text(
+        f"📂 **Обращения** (стр. {page}/{total_pages}, всего: {total_count})",
+        parse_mode="Markdown"
+    )
     
     for appeal in appeals:
-        message_text += format_appeal_message(appeal) + "\n" + "—" * 30 + "\n\n"
+        appeal_text = format_appeal_message(appeal)
+        keyboard = create_appeal_keyboard(appeal['id'])
+        
+        await callback.message.answer(
+            appeal_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
     
-    keyboard = create_pagination_keyboard(page, total_pages)
-    
-    await callback.message.edit_text(
-        message_text,
-        reply_markup=keyboard,
+    nav_keyboard = create_pagination_keyboard(page, total_pages)
+    await callback.message.answer(
+        "🔄 **Навигация:**",
+        reply_markup=nav_keyboard,
         parse_mode="Markdown"
     )
 
@@ -229,16 +238,25 @@ async def handle_pagination(callback: CallbackQuery):
     
     pagination_states[callback.from_user.id]['page'] = page
     
-    message_text = f"📂 **Обращения** (стр. {page}/{total_pages}, всего: {total_count})\n\n"
+    await callback.message.edit_text(
+        f"📂 **Обращения** (стр. {page}/{total_pages}, всего: {total_count})",
+        parse_mode="Markdown"
+    )
     
     for appeal in appeals:
-        message_text += format_appeal_message(appeal) + "\n" + "—" * 30 + "\n\n"
+        appeal_text = format_appeal_message(appeal)
+        keyboard = create_appeal_keyboard(appeal['id'])
+        
+        await callback.message.answer(
+            appeal_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
     
-    keyboard = create_pagination_keyboard(page, total_pages)
-    
-    await callback.message.edit_text(
-        message_text,
-        reply_markup=keyboard,
+    nav_keyboard = create_pagination_keyboard(page, total_pages)
+    await callback.message.answer(
+        "🔄 **Навигация:**",
+        reply_markup=nav_keyboard,
         parse_mode="Markdown"
     )
 
@@ -369,19 +387,28 @@ async def process_search(message: Message, state: FSMContext):
         )
         return
     
-    message_text = f"🔍 **Результаты поиска** по запросу '{search_query}'\n"
-    message_text += f"Найдено: {total_count} обращений\n\n"
+    await message.answer(
+        f"🔍 **Результаты поиска** по запросу '{search_query}'\nНайдено: {total_count} обращений",
+        parse_mode="Markdown"
+    )
     
     for appeal in appeals:
-        message_text += format_appeal_message(appeal) + "\n" + "—" * 30 + "\n\n"
+        appeal_text = format_appeal_message(appeal)
+        keyboard = create_appeal_keyboard(appeal['id'])
+        
+        await message.answer(
+            appeal_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
     
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    nav_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="admin_main")]
     ])
     
     await message.answer(
-        message_text,
-        reply_markup=keyboard,
+        "🔄 **Меню:**",
+        reply_markup=nav_keyboard,
         parse_mode="Markdown"
     )
 
@@ -417,19 +444,28 @@ async def process_room_filter(message: Message, state: FSMContext):
         )
         return
     
-    message_text = f"🏠 **Обращения из комнаты {room}**\n"
-    message_text += f"Найдено: {total_count} обращений\n\n"
+    await message.answer(
+        f"🏠 **Обращения из комнаты {room}**\nНайдено: {total_count} обращений",
+        parse_mode="Markdown"
+    )
     
     for appeal in appeals:
-        message_text += format_appeal_message(appeal) + "\n" + "—" * 30 + "\n\n"
+        appeal_text = format_appeal_message(appeal)
+        keyboard = create_appeal_keyboard(appeal['id'])
+        
+        await message.answer(
+            appeal_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
     
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    nav_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="admin_main")]
     ])
     
     await message.answer(
-        message_text,
-        reply_markup=keyboard,
+        "🔄 **Меню:**",
+        reply_markup=nav_keyboard,
         parse_mode="Markdown"
     )
 
