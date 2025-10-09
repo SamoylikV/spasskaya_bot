@@ -1,3 +1,4 @@
+cat web/main.py
 from fastapi import FastAPI, Request, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -21,8 +22,8 @@ from db.db import (
 
 app = FastAPI(title="Spasskaya Hotel Admin Panel", version="3.1")
 
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
-templates = Jinja2Templates(directory="web/templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 security = HTTPBasic()
 
