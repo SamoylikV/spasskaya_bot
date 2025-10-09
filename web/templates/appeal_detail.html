@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Обращение #{{ appeal.id }} - Spasskaya Hotel Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="/appeals">Обращения</a></li>
+                <li class="breadcrumb-item active">Обращение #{{ appeal.id }}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-envelope me-2"></i>
+                Обращение #{{ appeal.id }}
+                <span class="badge bg-{% if appeal.status == 'new' %}warning{% elif appeal.status == 'received' %}info{% elif appeal.status == 'done' %}success{% else %}danger{% endif %} ms-2">
+                    {% if appeal.status == 'new' %}Новое
+                    {% elif appeal.status == 'received' %}В работе
+                    {% elif appeal.status == 'done' %}Выполнено
+                    {% else %}Отклонено
+                    {% endif %}
+                </span>
+            </h1>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-refresh" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> Обновить
+                </button>
+                <a href="/appeals" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> К списку
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Appeal Info Card -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        Информация об обращении
+                    </h5>
+                    <span class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ appeal.created_at.strftime('%d.%m.%Y %H:%M') }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-4">
+                        <strong>Пользователь:</strong>
+                    </div>
+                    <div class="col-sm-8">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-circle text-muted me-2"></i>
+                            @{{ appeal.username }}
+                            <span class="badge bg-light text-dark ms-2">ID: {{ appeal.user_id }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-4">
+                        <strong>Комната:</strong>
+                    </div>
+                    <div class="col-sm-8">
+                        <span class="badge bg-secondary fs-6">
+                            <i class="fas fa-door-open me-1"></i>
+                            {{ appeal.room }}
+                        </span>
+                    </div>
+                </div>
+                
+                {% if appeal.assigned_admin %}
+                <div class="row mb-3">
+                    <div class="col-sm-4">
+                        <strong>Назначен администратор:</strong>
+                    </div>
+                    <div class="col-sm-8">
+                        <span class="badge bg-info">
+                            <i class="fas fa-user-shield me-1"></i>
+                            {{ appeal.assigned_admin }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if appeal.priority > 1 %}
+                <div class="row mb-3">
+                    <div class="col-sm-4">
+                        <strong>Приоритет:</strong>
+                    </div>
+                    <div class="col-sm-8">
+                        <span class="badge bg-warning">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Высокий
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Текст обращения:</strong>
+                        <div class="mt-2 p-3 bg-light rounded">
+                            <p class="mb-0">{{ appeal.text }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt text-warning me-2"></i>
+                    Быстрые действия
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <form class="ajax-form" action="/api/appeals/{{ appeal.id }}/status" method="post" data-has-local-handler="true">
+                        <input type="hidden" name="status" value="received">
+                        <button type="submit" class="btn btn-info w-100 {% if appeal.status == 'received' %}disabled{% endif %}">
+                            <i class="fas fa-play me-2"></i>
+                            Взять в работу
+                        </button>
+                    </form>
+                    
+                    <form class="ajax-form" action="/api/appeals/{{ appeal.id }}/status" method="post" data-has-local-handler="true">
+                        <input type="hidden" name="status" value="done">
+                        <button type="submit" class="btn btn-success w-100 {% if appeal.status == 'done' %}disabled{% endif %}">
+                            <i class="fas fa-check me-2"></i>
+                            Отметить выполненным
+                        </button>
+                    </form>
+                    
+                    <form class="ajax-form" action="/api/appeals/{{ appeal.id }}/status" method="post" data-has-local-handler="true">
+                        <input type="hidden" name="status" value="declined">
+                        <button type="submit" class="btn btn-danger w-100 {% if appeal.status == 'declined' %}disabled{% endif %}">
+                            <i class="fas fa-times me-2"></i>
+                            Отклонить
+                        </button>
+                    </form>
+                </div>
+                
+                <hr>
+                
+                <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#replyModal">
+                    <i class="fas fa-reply me-2"></i>
+                    Ответить пользователю
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments text-info me-2"></i>
+                        История переписки
+                        {% if messages %}
+                            <span class="badge bg-secondary">{{ messages|length }}</span>
+                        {% endif %}
+                    </h5>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if messages %}
+                    <div class="message-container" style="max-height: 500px; overflow-y: auto;">
+                        {% for message in messages %}
+                        <div class="message-item border-bottom p-3 {% if message.sender == 'admin' %}bg-light{% endif %}">
+                            <div class="d-flex align-items-start">
+                                <div class="flex-shrink-0 me-3">
+                                    {% if message.sender == 'admin' %}
+                                        <i class="fas fa-user-shield text-primary fa-2x"></i>
+                                    {% else %}
+                                        <i class="fas fa-user-circle text-muted fa-2x"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong class="{% if message.sender == 'admin' %}text-primary{% else %}text-muted{% endif %}">
+                                            {% if message.sender == 'admin' %}
+                                                Администратор
+                                            {% else %}
+                                                Пользователь
+                                            {% endif %}
+                                        </strong>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ message.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                        </small>
+                                    </div>
+                                    <p class="mb-0">{{ message.text }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="p-4 text-center text-muted">
+                        <i class="fas fa-comments fa-3x mb-3"></i>
+                        <p>Сообщений пока нет</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="replyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-reply me-2"></i>
+                    Ответить на обращение #{{ appeal.id }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="replyForm" class="ajax-form" action="/api/appeals/{{ appeal.id }}/reply" method="post" data-has-local-handler="true">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="replyMessage" class="form-label">Сообщение для пользователя:</label>
+                        <textarea class="form-control" id="replyMessage" name="message" rows="5" required placeholder="Введите ваш ответ..."></textarea>
+                        <div class="form-text">
+                            Сообщение будет отправлено пользователю @{{ appeal.username }} в Telegram.
+                            <br><i class="fas fa-info-circle me-1"></i> Пользователь сможет ответить на ваше сообщение.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Отправить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const messageContainer = document.querySelector('.message-container');
+    if (messageContainer) {
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+    
+    document.querySelectorAll('.ajax-form:not(#replyForm)').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const button = this.querySelector('button[type="submit"]');
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Загрузка...';
+            
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('API Response:', result);
+                
+                if (result.success) {
+                    showDetailToast('✅ Операция выполнена успешно!', 'success');
+                    
+                    if (result.status) {
+                        updateStatusUI(result.status);
+                    }
+                    
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    throw new Error(result.message || 'Ошибка при выполнении операции');
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+                showDetailToast('❌ ' + error.message, 'danger');
+                
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+        });
+    });
+    
+    const replyForm = document.getElementById('replyForm');
+    if (replyForm) {
+        replyForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Отправка...';
+            
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                console.log('Reply response:', result);
+                
+                if (result.success) {
+                    showDetailToast('✉️ Сообщение отправлено пользователю!', 'success');
+                    
+                    this.reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('replyModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showDetailToast('❌ Ошибка при отправке сообщения', 'danger');
+                }
+            } catch (error) {
+                console.error('Reply error:', error);
+                showDetailToast('❌ Ошибка сети', 'danger');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+    }
+    
+
+});
+
+function updateStatusUI(newStatus) {
+    const statusBadge = document.querySelector('.badge');
+    if (statusBadge) {
+        statusBadge.className = `badge bg-${getStatusColor(newStatus)} ms-2`;
+        statusBadge.textContent = getStatusText(newStatus);
+    }
+    
+    document.querySelectorAll('.ajax-form button').forEach(button => {
+        const form = button.closest('form');
+        if (form) {
+            const statusInput = form.querySelector('input[name="status"]');
+            if (statusInput) {
+                const buttonStatus = statusInput.value;
+                
+                if (buttonStatus === newStatus) {
+                    button.disabled = true;
+                    button.classList.add('disabled');
+                } else {
+                    button.disabled = false;
+                    button.classList.remove('disabled');
+                }
+            }
+        }
+    });
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'new': 'warning',
+        'received': 'info',
+        'done': 'success',
+        'declined': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getStatusText(status) {
+    const texts = {
+        'new': 'Новое',
+        'received': 'В работе',
+        'done': 'Выполнено',
+        'declined': 'Отклонено'
+    };
+    return texts[status] || status;
+}
+
+function showDetailToast(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 4000);
+}
+
+function getToastIcon(type) {
+    const icons = {
+        'success': 'check-circle',
+        'info': 'info-circle',
+        'warning': 'exclamation-triangle',
+        'error': 'times-circle',
+        'danger': 'times-circle'
+    };
+    return icons[type] || 'info-circle';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}Аналитика - Spasskaya Hotel Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-4"><i class="fas fa-chart-line me-2"></i> Расширенная аналитика</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Среднее время ответа
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.avg_response_time }}ч
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Сегодня обращений
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.today_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-{% if stats.growth_rate > 0 %}success{% elif stats.growth_rate < 0 %}danger{% else %}warning{% endif %} shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-{% if stats.growth_rate > 0 %}success{% elif stats.growth_rate < 0 %}danger{% else %}warning{% endif %} text-uppercase mb-1">
+                            Рост/снижение
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if stats.growth_rate > 0 %}+{% endif %}{{ stats.growth_rate }}%
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-{% if stats.growth_rate > 0 %}arrow-up{% elif stats.growth_rate < 0 %}arrow-down{% else %}minus{% endif %} fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Коэффициент решения
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ ((stats.done / (stats.total or 1)) * 100) | round(1) }}%
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-area me-2"></i>
+                    Обращения за последние 7 дней
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Распределение по статусам
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Активность по часам (24 часа)
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-trophy me-2"></i>
+                    Топ комнат по обращениям
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if stats.rooms %}
+                    <div class="list-group list-group-flush">
+                        {% for room in stats.rooms %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <i class="fas fa-door-open text-muted me-2"></i>
+                                <span class="fw-bold">Комната {{ room.room }}</span>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary rounded-pill">{{ room.count }}</span>
+                                <small class="text-muted ms-2">
+                                    {{ ((room.count / stats.total) * 100) | round(1) }}%
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>Нет данных</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-table me-2"></i>
+                    Детализированная статистика
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Общие показатели</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <td><i class="fas fa-envelope text-muted me-2"></i>Всего обращений</td>
+                                        <td><strong>{{ stats.total }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-exclamation-circle text-warning me-2"></i>Новых</td>
+                                        <td><strong class="text-warning">{{ stats.new }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-cog text-info me-2"></i>В работе</td>
+                                        <td><strong class="text-info">{{ stats.received }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-check text-success me-2"></i>Выполнено</td>
+                                        <td><strong class="text-success">{{ stats.done }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-times text-danger me-2"></i>Отклонено</td>
+                                        <td><strong class="text-danger">{{ stats.declined }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Показатели эффективности</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <td><i class="fas fa-clock text-muted me-2"></i>Среднее время ответа</td>
+                                        <td><strong>{{ stats.avg_response_time }} часов</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-calendar-check text-muted me-2"></i>Сегодня</td>
+                                        <td><strong>{{ stats.today_count }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-calendar text-muted me-2"></i>Вчера</td>
+                                        <td><strong>{{ stats.yesterday_count }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-percentage text-muted me-2"></i>Коэффициент решения</td>
+                                        <td><strong>{{ ((stats.done / (stats.total or 1)) * 100) | round(1) }}%</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-{% if stats.growth_rate > 0 %}arrow-up text-success{% elif stats.growth_rate < 0 %}arrow-down text-danger{% else %}minus text-warning{% endif %} me-2"></i>Изменение</td>
+                                        <td><strong class="text-{% if stats.growth_rate > 0 %}success{% elif stats.growth_rate < 0 %}danger{% else %}warning{% endif %}">
+                                            {% if stats.growth_rate > 0 %}+{% endif %}{{ stats.growth_rate }}%
+                                        </strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const dailyData = {{ stats.daily | tojson | safe }};
+const hourlyData = {{ stats.hourly | tojson | safe }};
+const statusData = {
+    'new': {{ stats.new }},
+    'received': {{ stats.received }},
+    'done': {{ stats.done }},
+    'declined': {{ stats.declined }}
+};
+
+const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+new Chart(dailyCtx, {
+    type: 'line',
+    data: {
+        labels: dailyData.map(item => {
+            const date = new Date(item.date);
+            return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
+        }),
+        datasets: [{
+            label: 'Обращения',
+            data: dailyData.map(item => item.count),
+            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Новые', 'В работе', 'Выполнено', 'Отклонено'],
+        datasets: [{
+            data: [statusData.new, statusData.received, statusData.done, statusData.declined],
+            backgroundColor: [
+                'rgb(255, 193, 7)',
+                'rgb(13, 202, 240)',
+                'rgb(25, 135, 84)',
+                'rgb(220, 53, 69)'
+            ],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    usePointStyle: true
+                }
+            }
+        }
+    }
+});
+
+const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+
+const hourlyChartData = Array.from({length: 24}, (_, i) => {
+    const hourData = hourlyData.find(h => parseInt(h.hour) === i);
+    return hourData ? hourData.count : 0;
+});
+
+new Chart(hourlyCtx, {
+    type: 'bar',
+    data: {
+        labels: Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`),
+        datasets: [{
+            label: 'Обращения',
+            data: hourlyChartData,
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgb(75, 192, 192)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+setInterval(() => {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

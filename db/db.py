@@ -49,6 +49,16 @@ async def init_db():
             created_at TIMESTAMP DEFAULT now()
         );
         """)
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS pending_admin_messages (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            message TEXT NOT NULL,
+            appeal_id INTEGER,
+            sent BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_status ON appeals(status);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_room ON appeals(room);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_created_at ON appeals(created_at);")
@@ -189,7 +199,7 @@ async def get_appeals_stats():
             FROM appeals 
             WHERE created_at >= NOW() - INTERVAL '7 days' 
             GROUP BY DATE(created_at) 
-            ORDER BY date DESC
+            ORDER BY date ASC
         """)
         
         room_stats = await conn.fetch("""
@@ -198,6 +208,30 @@ async def get_appeals_stats():
             GROUP BY room 
             ORDER BY count DESC 
             LIMIT 10
+        """)
+        
+        hourly_stats = await conn.fetch("""
+            SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count
+            FROM appeals
+            WHERE created_at >= NOW() - INTERVAL '24 hours'
+            GROUP BY hour
+            ORDER BY hour
+        """)
+        
+        avg_response_time = await conn.fetchval("""
+            SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) / 3600
+            FROM appeals
+            WHERE status != 'new' AND updated_at IS NOT NULL
+        """)
+        
+        today_count = await conn.fetchval("""
+            SELECT COUNT(*) FROM appeals 
+            WHERE DATE(created_at) = CURRENT_DATE
+        """)
+        
+        yesterday_count = await conn.fetchval("""
+            SELECT COUNT(*) FROM appeals 
+            WHERE DATE(created_at) = CURRENT_DATE - INTERVAL '1 day'
         """)
         
     finally:
@@ -209,8 +243,13 @@ async def get_appeals_stats():
         'received': received_count,
         'done': done_count,
         'declined': declined_count,
-        'daily': daily_stats,
-        'rooms': room_stats
+        'daily': [{'date': row['date'].strftime('%Y-%m-%d'), 'count': row['count']} for row in daily_stats],
+        'rooms': [{'room': row['room'], 'count': row['count']} for row in room_stats],
+        'hourly': [{'hour': int(row['hour']), 'count': row['count']} for row in hourly_stats],
+        'avg_response_time': round(avg_response_time or 0, 2),
+        'today_count': today_count,
+        'yesterday_count': yesterday_count,
+        'growth_rate': round(((today_count - yesterday_count) / max(yesterday_count, 1)) * 100, 1) if yesterday_count else 0
     }
 
 

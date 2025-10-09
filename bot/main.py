@@ -10,9 +10,8 @@ from aiogram.fsm.context import FSMContext
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import TOKEN, ADMIN_ID, DB_URL
-from db.db import create_appeal, add_message, get_appeals, update_status, init_db, is_admin, add_admin, can_user_reply
-from bot.admin_panel import admin_router
+from config import TOKEN, DB_URL
+from db.db import create_appeal, add_message, init_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,11 +20,6 @@ bot = Bot(TOKEN)
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
-dp.include_router(admin_router)
-
-
-class AdminReply(StatesGroup):
-    waiting_text = State()
 
 
 class RoomInput(StatesGroup):
@@ -34,17 +28,12 @@ class RoomInput(StatesGroup):
 
 class UserAppeal(StatesGroup):
     waiting_text = State()
-
-
-class UserReply(StatesGroup):
-    waiting_text = State()
-
+    waiting_reply = State()
 
 
 async def show_main_menu(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📩 Обращение (ресепшен)", callback_data="menu_appeal")],
-        # [InlineKeyboardButton(text="🛎 Бронирование (пока недоступно)", callback_data="menu_booking")],
         [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")]
     ])
     await message.answer("Добро пожаловать! Выберите действие:", reply_markup=keyboard)
@@ -86,11 +75,6 @@ async def menu_appeal(callback: CallbackQuery, state: FSMContext):
         await state.set_state(RoomInput.waiting_room)
 
 
-@router.callback_query(F.data == "menu_booking")
-async def menu_booking(callback: CallbackQuery):
-    await callback.answer("Функция бронирования пока не реализована.", show_alert=True)
-
-
 @router.callback_query(F.data == "menu_contacts")
 async def menu_contacts(callback: CallbackQuery):
     await callback.answer()
@@ -114,43 +98,31 @@ async def cancel_cmd(message: Message, state: FSMContext):
 
 @router.message(Command("help"))
 async def help_cmd(message: Message):
-    await message.answer("Это бот отеля 'Спасская'.\n"
-                         "/start — главное меню\n"
-                         "/admin — меню администратора (только для админа)\n"
-                         "/cancel — отменить текущее действие\n"
-                         "Для обращения сначала укажите номер комнаты через /start 101 или при запросе.")
+    help_text = """🏨 <b>Бот отеля 'Спасская'</b>
 
+📋 <b>Команды:</b>
+/start — главное меню
+/help — получить справку
+/cancel — отменить текущее действие
 
-# @router.callback_query(F.data.startswith("task_"))
-# async def task_chosen(callback: CallbackQuery, state: FSMContext):
-#     await callback.answer()
-#     user_id = callback.from_user.id
-#     username = callback.from_user.username or str(user_id)
-#     data = await state.get_data()
-#     room = data.get("room", "не указан")
+📩 <b>Как сделать обращение:</b>
+1. Нажмите /start или выберите "Обращение (ресепшен)"
+2. Укажите номер вашей комнаты
+3. Опишите вашу проблему или пожелание
 
-#     text_map = {
-#         "task_clean": "Убраться в номере",
-#         "task_food": "Принести еду",
-#         "task_other": "Другое обращение"
-#     }
-#     key = callback.data
-#     text = text_map.get(key, "Другое обращение")
+💬 <b>Ответы на сообщения:</b>
+• Когда администратор ответит, вы сможете ответить обратно
+• Нажмите кнопку "Ответить" под сообщением
+• Напишите ваш ответ и отправьте
 
-#     appeal_id = await create_appeal(user_id, username, room, text)
-#     await add_message(appeal_id, "user", text)
+🔄 <b>Если проблема не решена:</b>
+Нажмите "Не решено" под сообщением о выполнении
 
-#     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-#         [
-#             InlineKeyboardButton(text="✅ Получено", callback_data=f"admin_status:{appeal_id}:received"),
-#             InlineKeyboardButton(text="❌ Отказано", callback_data=f"admin_status:{appeal_id}:declined"),
-#             InlineKeyboardButton(text="✔ Выполнено", callback_data=f"admin_status:{appeal_id}:done"),
-#             InlineKeyboardButton(text="✉ Ответить", callback_data=f"admin_reply:{appeal_id}")
-#         ]
-#     ])
+📞 <b>Быстрый старт:</b>
+Можно сразу указать комнату: /start 101"""
+    
+    await message.answer(help_text, parse_mode="HTML")
 
-#     await bot.send_message(ADMIN_ID, f"📩 Новое обращение от @{username} (комната {room})\n📝 {text}", reply_markup=keyboard)
-#     await callback.message.answer("Ваше обращение отправлено ✅")
 
 @router.message(UserAppeal.waiting_text)
 async def user_appeal_text(message: Message, state: FSMContext):
@@ -164,24 +136,8 @@ async def user_appeal_text(message: Message, state: FSMContext):
     appeal_id = await create_appeal(user_id, username, room, text)
     await add_message(appeal_id, "user", text)
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="✅ Получено", callback_data=f"admin_status:{appeal_id}:received"),
-            InlineKeyboardButton(text="❌ Отказано", callback_data=f"admin_status:{appeal_id}:declined"),
-            InlineKeyboardButton(text="✔ Выполнено", callback_data=f"admin_status:{appeal_id}:done"),
-            InlineKeyboardButton(text="✉ Ответить", callback_data=f"admin_reply:{appeal_id}")
-        ]
-    ])
-
-    await bot.send_message(
-        ADMIN_ID,
-        f"📩 Новое обращение от @{username} (комната {room})\n📝 {text}",
-        reply_markup=keyboard
-    )
-
     await message.answer("Ваше обращение отправлено ✅", reply_markup=ReplyKeyboardRemove())
     await state.clear()
-
 
 
 @router.callback_query(F.data.startswith("user_reopen:"))
@@ -193,71 +149,66 @@ async def user_reopen(callback: CallbackQuery):
     except Exception:
         await callback.message.answer("Неправильный ID.")
         return
-    await update_status(appeal_id, "new")
-    await bot.send_message(ADMIN_ID, f"⚠ Пользователь переоткрыл обращение ID {appeal_id}")
+    
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute("UPDATE appeals SET status = 'new' WHERE id = $1", appeal_id)
+    finally:
+        await conn.close()
+        
     await callback.message.answer("Мы снова передали ваше обращение администратору ✅")
 
+
 @router.callback_query(F.data.startswith("user_reply:"))
-async def start_user_reply(callback: CallbackQuery, state: FSMContext):
+async def user_start_reply(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     try:
         _, appeal_id = callback.data.split(":")
         appeal_id = int(appeal_id)
     except Exception:
-        await callback.answer("Неправильный ID.", show_alert=True)
+        await callback.message.answer("Неправильный ID.")
         return
     
-    can_reply = await can_user_reply(appeal_id, callback.from_user.id)
-    if not can_reply:
-        await callback.answer("Вы можете ответить только один раз на сообщение админа.", show_alert=True)
-        return
-    
-    await state.update_data(appeal_id=appeal_id)
-    await state.set_state(UserReply.waiting_text)
+    await state.update_data(reply_appeal_id=appeal_id)
+    await state.set_state(UserAppeal.waiting_reply)
     
     await callback.message.answer(
-        f"✉️ **Ответ на обращение #{appeal_id}**\n\nНапишите ваш ответ:",
-        parse_mode="Markdown"
+        "✏️ Напишите ваш ответ администратору:\n\n"
+        "Отправьте /cancel чтобы отменить ответ."
     )
 
-@router.message(UserReply.waiting_text)
-async def send_user_reply(message: Message, state: FSMContext):
+
+@router.message(UserAppeal.waiting_reply)
+async def user_reply_text(message: Message, state: FSMContext):
+    user_id = message.from_user.id
     data = await state.get_data()
-    appeal_id = data.get("appeal_id")
+    appeal_id = data.get("reply_appeal_id")
     
     if not appeal_id:
-        await message.answer("Ошибка. Попробуйте ещё раз.")
+        await message.answer("❌ Ошибка: ID обращения не найден. Попробуйте снова.")
         await state.clear()
         return
     
-    try:
-        await add_message(appeal_id, "user", message.text)
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Получено", callback_data=f"admin_status:{appeal_id}:received"),
-                InlineKeyboardButton(text="❌ Отказано", callback_data=f"admin_status:{appeal_id}:declined"),
-                InlineKeyboardButton(text="✔ Выполнено", callback_data=f"admin_status:{appeal_id}:done"),
-                InlineKeyboardButton(text="✉ Ответить", callback_data=f"admin_reply:{appeal_id}")
-            ]
-        ])
-        
-        await bot.send_message(
-            ADMIN_ID,
-            f"💬 **Ответ пользователя на обращение #{appeal_id}:**\nОт: @{message.from_user.username or message.from_user.id}\n\n{message.text}",
-            reply_markup=keyboard,
-            parse_mode="Markdown"
-        )
-        
-        await message.answer("✅ Ваш ответ отправлен администратору.")
-        
-    except Exception as e:
-        logger.error(f"Ошибка отправки ответа: {e}")
-        await message.answer("Ошибка при отправке ответа.")
+    text = message.text.strip()
     
+    await add_message(appeal_id, "user", text)
+    
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        appeal = await conn.fetchrow("SELECT username, room FROM appeals WHERE id = $1", appeal_id)
+        if appeal:
+            await conn.execute(
+                "UPDATE appeals SET status = 'new', updated_at = NOW() WHERE id = $1 AND status != 'new'", 
+                appeal_id
+            )
+            
+            logger.info(f"New user reply on appeal {appeal_id}: {text}")
+            logger.info(f"Appeal {appeal_id} status updated to 'new' due to user reply")
+    finally:
+        await conn.close()
+    
+    await message.answer("✅ Ваш ответ отправлен администратору!")
     await state.clear()
-
-
 
 
 @dp.errors()
@@ -266,18 +217,92 @@ async def global_error_handler(event, data):
     logger.exception("Ошибка при обработке апдейта: %s", exception)
 
 
+async def check_message_queue():
+    while True:
+        try:
+            conn = await asyncpg.connect(DB_URL)
+            try:
+                pending_messages = await conn.fetch(
+                    """SELECT id, user_id, message, appeal_id, created_at 
+                       FROM pending_admin_messages 
+                       WHERE sent = FALSE 
+                       AND created_at <= NOW() - INTERVAL '2 seconds'
+                       ORDER BY created_at LIMIT 10"""
+                )
+                
+                for msg in pending_messages:
+                    try:
+
+                        await conn.execute(
+                            "UPDATE pending_admin_messages SET sent = TRUE WHERE id = $1",
+                            msg['id']
+                        )
+                        
+                        message_text = msg['message']
+                        reply_markup = None
+                        
+                        if msg['appeal_id']:
+                            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                            buttons = []
+                            
+                            if 'Ответ администратора' in message_text or 'Ваше обращение' in message_text:
+                                buttons.append([InlineKeyboardButton(text="✏️ Ответить", callback_data=f"user_reply:{msg['appeal_id']}")])
+                            
+                            if 'выполнено ✅' in message_text:
+                                buttons.append([InlineKeyboardButton(text="❌ Не решено", callback_data=f"user_reopen:{msg['appeal_id']}")])
+                            
+                            if buttons:
+                                reply_markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+                        
+                        await bot.send_message(
+                            msg['user_id'],
+                            message_text,
+                            reply_markup=reply_markup
+                        )
+                        
+                        logger.info(f"Sent admin message to user {msg['user_id']}")
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to send message to user {msg['user_id']}: {e}")
+
+                        try:
+                            await conn.execute(
+                                "UPDATE pending_admin_messages SET sent = FALSE WHERE id = $1",
+                                msg['id']
+                            )
+                        except Exception as rollback_error:
+                            logger.error(f"Failed to rollback message status: {rollback_error}")
+                        
+            finally:
+                await conn.close()
+                
+        except Exception as e:
+            logger.error(f"Error checking message queue: {e}")
+        
+        await asyncio.sleep(5)
+
 async def main():
     logger.info("Инициализация БД...")
     await init_db()
     
+    conn = await asyncpg.connect(DB_URL)
     try:
-        if ADMIN_ID:
-            await add_admin(int(ADMIN_ID), "main_admin", "super_admin")
-            logger.info(f"Главный админ {ADMIN_ID} добавлен в систему")
-    except Exception as e:
-        logger.warning(f"Не удалось добавить главного админа: {e}")
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS pending_admin_messages (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                message TEXT NOT NULL,
+                appeal_id INTEGER,
+                sent BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    finally:
+        await conn.close()
     
-    logger.info("Запуск polling...")
+    logger.info("Запуск polling и проверки очереди сообщений...")
+    asyncio.create_task(check_message_queue())
+    
     await dp.start_polling(bot)
 
 

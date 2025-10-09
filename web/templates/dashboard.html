@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Spasskaya Hotel Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-4"><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-left-primary shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt text-warning me-2"></i>
+                        Быстрые действия
+                    </h5>
+                    <div class="btn-group" role="group">
+                        <a href="/appeals?status=new" class="btn btn-warning btn-sm">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            Новые ({{ stats.new }})
+                        </a>
+                        <a href="/appeals?status=received" class="btn btn-info btn-sm">
+                            <i class="fas fa-cog me-1"></i>
+                            В работе ({{ stats.received }})
+                        </a>
+                        <a href="/analytics" class="btn btn-primary btn-sm">
+                            <i class="fas fa-chart-line me-1"></i>
+                            Аналитика
+                        </a>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+                            <i class="fas fa-sync-alt me-1"></i>
+                            Обновить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 stats-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Всего обращений
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.total }}
+                            {% if stats.today_count %}
+                                <small class="text-muted">(+{{ stats.today_count }} сегодня)</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-envelope fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 stats-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Новых обращений
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.new }}
+                            {% if stats.new > 0 %}
+                                <small class="text-warning">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    Требует внимания
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-{% if stats.new > 0 %}bell{% else %}check-circle{% endif %} fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 stats-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            В работе
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.received }}
+                            {% if stats.avg_response_time %}
+                                <small class="text-muted d-block">
+                                    Ср. время: {{ stats.avg_response_time }}ч
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-{% if stats.received > 0 %}cog fa-spin{% else %}pause-circle{% endif %} fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 stats-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Выполнено
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.done }}
+                            {% if stats.total > 0 %}
+                                <small class="text-success d-block">
+                                    {{ ((stats.done / stats.total) * 100) | round(1) }}% от всех
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Обращения за последние 7 дней</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="dailyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">По статусам</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Последние обращения</h6>
+                <a href="/appeals" class="btn btn-sm btn-primary">
+                    <i class="fas fa-arrow-right"></i> Все обращения
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Пользователь</th>
+                                <th>Комната</th>
+                                <th>Текст</th>
+                                <th>Статус</th>
+                                <th>Дата</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appeal in appeals %}
+                            <tr>
+                                <td>{{ appeal.id }}</td>
+                                <td>@{{ appeal.username }}</td>
+                                <td>{{ appeal.room }}</td>
+                                <td>{{ appeal.text[:50] }}{% if appeal.text|length > 50 %}...{% endif %}</td>
+                                <td>
+                                    <span class="badge bg-{% if appeal.status == 'new' %}warning{% elif appeal.status == 'received' %}info{% elif appeal.status == 'done' %}success{% else %}danger{% endif %}">
+                                        {{ appeal.status }}
+                                    </span>
+                                </td>
+                                <td>{{ appeal.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                                <td>
+                                    <a href="/appeals/{{ appeal.id }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const dailyData = {{ stats.daily | tojson | safe }};
+const statusData = {
+    'new': {{ stats.new }},
+    'received': {{ stats.received }},
+    'done': {{ stats.done }},
+    'declined': {{ stats.declined }}
+};
+
+const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+new Chart(dailyCtx, {
+    type: 'line',
+    data: {
+        labels: dailyData.map(item => new Date(item.date).toLocaleDateString('ru-RU')),
+        datasets: [{
+            label: 'Обращения',
+            data: dailyData.map(item => item.count),
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Новые', 'В работе', 'Выполнено', 'Отклонено'],
+        datasets: [{
+            data: [statusData.new, statusData.received, statusData.done, statusData.declined],
+            backgroundColor: [
+                'rgb(255, 193, 7)',
+                'rgb(13, 202, 240)',
+                'rgb(25, 135, 84)',
+                'rgb(220, 53, 69)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+</script>
+{% endblock %}
