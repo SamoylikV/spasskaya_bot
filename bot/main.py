@@ -34,10 +34,9 @@ class UserAppeal(StatesGroup):
 
 
 async def show_main_menu(message: Message):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")]
-    ])
-    await message.answer("Добро пожаловать! Выберите действие:", reply_markup=keyboard)
+    await send_welcome_with_photo(message)
+    await message.answer("Введите номер вашей комнаты:")
+    return "waiting_room"
 
 
 async def show_service_menu(message: Message, state: FSMContext):
@@ -47,6 +46,7 @@ async def show_service_menu(message: Message, state: FSMContext):
         [InlineKeyboardButton(text="🔧 Техническая проблема в номере", callback_data="service_technical")],
         [InlineKeyboardButton(text="🍽 Услуги ресторана", callback_data="service_restaurant")],
         [InlineKeyboardButton(text="❓ Другой вопрос", callback_data="service_other")],
+        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")],
         [InlineKeyboardButton(text="🏠 Назад в главное меню", callback_data="back_main_menu")]
     ])
     await message.answer("Выберите услугу:", reply_markup=keyboard)
@@ -61,8 +61,7 @@ async def start(message: Message, command: CommandObject, state: FSMContext):
         await show_service_menu(message, state)
         return
 
-    await send_welcome_with_photo(message)
-    await message.answer("Введите номер вашей комнаты:")
+    await show_main_menu(message)
     await state.set_state(RoomInput.waiting_room)
 
 async def send_welcome_with_photo(message: Message):
@@ -80,8 +79,12 @@ async def send_welcome_with_photo(message: Message):
 """
     
     try:
-        photo = FSInputFile("images/hotel_welcome.jpg")
-        await message.answer_photo(photo, caption=welcome_text)
+        photo_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'hotel_welcome.jpg')
+        if os.path.exists(photo_path):
+            photo = FSInputFile(photo_path)
+            await message.answer_photo(photo, caption=welcome_text)
+        else:
+            await message.answer(welcome_text)
     except Exception:
         await message.answer(welcome_text)
 
@@ -89,11 +92,14 @@ async def send_welcome_with_photo(message: Message):
 @router.callback_query(F.data == "back_main_menu")
 async def back_main_menu(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await show_main_menu(callback.message)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")]
+    ])
+    await callback.message.answer("Главное меню:", reply_markup=keyboard)
 
 
 @router.callback_query(F.data == "menu_contacts")
-async def menu_contacts(callback: CallbackQuery):
+async def menu_contacts(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     contacts_text = """
 📞 Контакты отеля:
@@ -107,7 +113,7 @@ async def menu_contacts(callback: CallbackQuery):
 📧 Почта: info@hotel-spasskaya.ru
 """
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏠 Назад в главное меню", callback_data="back_main_menu")]
+        [InlineKeyboardButton(text="🔙 Назад к услугам", callback_data="back_services")]
     ])
     await callback.message.answer(contacts_text, reply_markup=keyboard)
 
@@ -241,8 +247,12 @@ async def service_restaurant(callback: CallbackQuery, state: FSMContext):
 async def menu_room_service(callback: CallbackQuery):
     await callback.answer()
     try:
-        menu_file = FSInputFile("menus/room_service_menu.pdf")
-        await callback.message.answer_document(menu_file, caption="📋 Меню рум-сервис")
+        menu_path = os.path.join(os.path.dirname(__file__), '..', 'menus', 'room_service_menu.pdf')
+        if os.path.exists(menu_path):
+            menu_file = FSInputFile(menu_path)
+            await callback.message.answer_document(menu_file, caption="📋 Меню рум-сервис")
+        else:
+            await callback.message.answer("📋 Меню рум-сервис временно недоступно. Обратитесь к администратору.")
     except Exception:
         await callback.message.answer("📋 Меню рум-сервис временно недоступно. Обратитесь к администратору.")
 
@@ -250,8 +260,12 @@ async def menu_room_service(callback: CallbackQuery):
 async def menu_restaurant(callback: CallbackQuery):
     await callback.answer()
     try:
-        menu_file = FSInputFile("menus/restaurant_menu.pdf")
-        await callback.message.answer_document(menu_file, caption="🍽 Меню ресторана")
+        menu_path = os.path.join(os.path.dirname(__file__), '..', 'menus', 'restaurant_menu.pdf')
+        if os.path.exists(menu_path):
+            menu_file = FSInputFile(menu_path)
+            await callback.message.answer_document(menu_file, caption="🍽 Меню ресторана")
+        else:
+            await callback.message.answer("🍽 Меню ресторана временно недоступно. Обратитесь к администратору.")
     except Exception:
         await callback.message.answer("🍽 Меню ресторана временно недоступно. Обратитесь к администратору.")
 
