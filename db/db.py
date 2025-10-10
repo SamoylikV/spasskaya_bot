@@ -15,6 +15,8 @@ async def init_db():
             username TEXT,
             room TEXT,
             text TEXT,
+            request_type TEXT DEFAULT 'other',
+            optional_comment TEXT,
             status TEXT DEFAULT 'new',
             priority INT DEFAULT 1,
             assigned_admin BIGINT,
@@ -22,6 +24,13 @@ async def init_db():
             updated_at TIMESTAMP DEFAULT now()
         );
         """)
+        
+        await conn.execute("""
+        ALTER TABLE appeals 
+        ADD COLUMN IF NOT EXISTS request_type TEXT DEFAULT 'other',
+        ADD COLUMN IF NOT EXISTS optional_comment TEXT;
+        """)
+        
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id SERIAL PRIMARY KEY,
@@ -63,16 +72,17 @@ async def init_db():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_room ON appeals(room);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_created_at ON appeals(created_at);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_user_id ON appeals(user_id);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_request_type ON appeals(request_type);")
     finally:
         await conn.close()
 
 
-async def create_appeal(user_id, username, room, text):
+async def create_appeal(user_id, username, room, text, request_type='other', optional_comment=None):
     conn = await asyncpg.connect(DB_URL)
     try:
         appeal_id = await conn.fetchval(
-            "INSERT INTO appeals (user_id, username, room, text) VALUES ($1,$2,$3,$4) RETURNING id",
-            user_id, username, room, text
+            "INSERT INTO appeals (user_id, username, room, text, request_type, optional_comment) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
+            user_id, username, room, text, request_type, optional_comment
         )
     finally:
         await conn.close()
@@ -100,7 +110,7 @@ async def update_status(appeal_id, status):
     return row["user_id"] if row else None
 
 
-async def get_appeals(status=None, limit=50, offset=0, room=None, search_query=None):
+async def get_appeals(status=None, limit=50, offset=0, room=None, search_query=None, request_type=None):
     conn = await asyncpg.connect(DB_URL)
     try:
         conditions = []
@@ -115,6 +125,11 @@ async def get_appeals(status=None, limit=50, offset=0, room=None, search_query=N
         if room:
             conditions.append(f"room=${param_counter}")
             params.append(room)
+            param_counter += 1
+            
+        if request_type:
+            conditions.append(f"request_type=${param_counter}")
+            params.append(request_type)
             param_counter += 1
             
         if search_query:
@@ -210,6 +225,13 @@ async def get_appeals_stats():
             LIMIT 10
         """)
         
+        type_stats = await conn.fetch("""
+            SELECT request_type, COUNT(*) as count 
+            FROM appeals 
+            GROUP BY request_type 
+            ORDER BY count DESC
+        """)
+        
         hourly_stats = await conn.fetch("""
             SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count
             FROM appeals
@@ -245,6 +267,7 @@ async def get_appeals_stats():
         'declined': declined_count,
         'daily': [{'date': row['date'].strftime('%Y-%m-%d'), 'count': row['count']} for row in daily_stats],
         'rooms': [{'room': row['room'], 'count': row['count']} for row in room_stats],
+        'types': [{'type': row['request_type'], 'count': row['count']} for row in type_stats],
         'hourly': [{'hour': int(row['hour']), 'count': row['count']} for row in hourly_stats],
         'avg_response_time': round(avg_response_time or 0, 2),
         'today_count': today_count,
@@ -299,3 +322,36 @@ async def can_user_reply(appeal_id, user_id):
     finally:
         await conn.close()
 
+
+async def get_appeals_by_type():
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        type_groups = {}
+        
+        # Define type mappings
+        type_names = {
+            'iron': 'Утюг и гладильная доска',
+            'laundry': 'Услуги прачечной',
+            'technical_ac': 'Кондиционер',
+            'technical_wifi': 'WiFi',
+            'technical_tv': 'Телевизор',
+            'technical_other': 'Другие технические проблемы',
+            'restaurant_call': 'Соединить с рестораном',
+            'custom': 'Другие вопросы',
+            'other': 'Прочее'
+        }
+        
+        for req_type, display_name in type_names.items():
+            appeals = await conn.fetch("""
+                SELECT * FROM appeals 
+                WHERE request_type = $1 
+                ORDER BY created_at DESC
+            """, req_type)
+            
+            if appeals:
+                type_groups[display_name] = [dict(appeal) for appeal in appeals]
+    
+    finally:
+        await conn.close()
+    
+    return type_groups

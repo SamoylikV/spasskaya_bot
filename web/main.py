@@ -16,7 +16,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import DB_URL, ADMIN_PASSWORD
 from db.db import (
     get_appeals, get_appeal_with_messages, update_status, add_message,
-    get_appeals_stats, assign_appeal_to_admin, bulk_update_status
+    get_appeals_stats, assign_appeal_to_admin, bulk_update_status,
+    get_appeals_by_type
 )
 
 app = FastAPI(title="Spasskaya Hotel Admin Panel", version="3.1")
@@ -104,6 +105,7 @@ async def appeals_page(
     status: Optional[str] = None,
     room: Optional[str] = None,
     search: Optional[str] = None,
+    request_type: Optional[str] = None,
     page: int = 1,
     admin: str = Depends(get_current_admin)
 ):
@@ -114,11 +116,25 @@ async def appeals_page(
         status=status,
         room=room,
         search_query=search,
+        request_type=request_type,
         limit=limit,
         offset=offset
     )
     
     total_pages = (total + limit - 1) // limit
+    
+    # Request type options for the filter
+    request_type_options = {
+        'iron': 'Утюг и гладильная доска',
+        'laundry': 'Услуги прачечной',
+        'technical_ac': 'Кондиционер',
+        'technical_wifi': 'WiFi',
+        'technical_tv': 'Телевизор',
+        'technical_other': 'Другие технические проблемы',
+        'restaurant_call': 'Соединить с рестораном',
+        'custom': 'Другие вопросы',
+        'other': 'Прочее'
+    }
     
     return templates.TemplateResponse("appeals.html", {
         "request": request,
@@ -128,7 +144,9 @@ async def appeals_page(
         "total_appeals": total,
         "status_filter": status,
         "room_filter": room,
-        "search_filter": search
+        "search_filter": search,
+        "request_type_filter": request_type,
+        "request_type_options": request_type_options
     })
 
 @app.get("/appeals/{appeal_id}", response_class=HTMLResponse)
@@ -310,6 +328,15 @@ async def analytics_page(request: Request, admin: str = Depends(get_current_admi
 async def chat_page(request: Request, admin: str = Depends(get_current_admin)):
     return templates.TemplateResponse("chat.html", {
         "request": request
+    })
+
+@app.get("/appeals/by-type", response_class=HTMLResponse)
+async def appeals_by_type_page(request: Request, admin: str = Depends(get_current_admin)):
+    type_groups = await get_appeals_by_type()
+    
+    return templates.TemplateResponse("appeals_by_type.html", {
+        "request": request,
+        "type_groups": type_groups
     })
 
 if __name__ == "__main__":
