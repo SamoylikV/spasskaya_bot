@@ -36,7 +36,6 @@ class UserAppeal(StatesGroup):
 async def show_main_menu(message: Message):
     await send_welcome_with_photo(message)
     await message.answer("Введите номер вашей комнаты:")
-    return "waiting_room"
 
 
 async def show_service_menu(message: Message, state: FSMContext):
@@ -79,23 +78,26 @@ async def send_welcome_with_photo(message: Message):
 """
     
     try:
-        photo_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'hotel_welcome.jpg')
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        photo_path = os.path.join(current_dir, '..', 'images', 'hotel_welcome.jpg')
+        photo_path = os.path.abspath(photo_path)
+        
         if os.path.exists(photo_path):
             photo = FSInputFile(photo_path)
             await message.answer_photo(photo, caption=welcome_text)
         else:
             await message.answer(welcome_text)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error sending photo: {e}")
         await message.answer(welcome_text)
 
 
 @router.callback_query(F.data == "back_main_menu")
 async def back_main_menu(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")]
-    ])
-    await callback.message.answer("Главное меню:", reply_markup=keyboard)
+    await state.clear()
+    await show_main_menu(callback.message)
+    await state.set_state(RoomInput.waiting_room)
 
 
 @router.callback_query(F.data == "menu_contacts")
@@ -247,7 +249,10 @@ async def service_restaurant(callback: CallbackQuery, state: FSMContext):
 async def menu_room_service(callback: CallbackQuery):
     await callback.answer()
     try:
-        menu_path = os.path.join(os.path.dirname(__file__), '..', 'menus', 'room_service_menu.pdf')
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        menu_path = os.path.join(current_dir, '..', 'menus', 'room_service_menu.pdf')
+        menu_path = os.path.abspath(menu_path)
+        
         if os.path.exists(menu_path):
             menu_file = FSInputFile(menu_path)
             await callback.message.answer_document(menu_file, caption="📋 Меню рум-сервис")
@@ -260,7 +265,10 @@ async def menu_room_service(callback: CallbackQuery):
 async def menu_restaurant(callback: CallbackQuery):
     await callback.answer()
     try:
-        menu_path = os.path.join(os.path.dirname(__file__), '..', 'menus', 'restaurant_menu.pdf')
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        menu_path = os.path.join(current_dir, '..', 'menus', 'restaurant_menu.pdf')
+        menu_path = os.path.abspath(menu_path)
+        
         if os.path.exists(menu_path):
             menu_file = FSInputFile(menu_path)
             await callback.message.answer_document(menu_file, caption="🍽 Меню ресторана")
@@ -283,6 +291,11 @@ async def service_other(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "back_services")
 async def back_services(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await show_service_menu(callback.message, state)
+
+@router.callback_query(F.data == "new_request")
+async def new_request(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await show_service_menu(callback.message, state)
 
@@ -316,8 +329,13 @@ async def process_service_request(message: Message, state: FSMContext, comment: 
     if comment:
         final_message += f"\n\nВаш комментарий: {comment}"
     
-    await message.answer(final_message)
-    await state.clear()
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🛎 Новая заявка", callback_data="new_request")],
+        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")]
+    ])
+    
+    await message.answer(final_message, reply_markup=keyboard)
+    await state.update_data(room=room)
 
 
 @router.callback_query(F.data.startswith("user_reopen:"))
