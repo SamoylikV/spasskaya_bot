@@ -45,9 +45,9 @@ async def show_service_menu(message: Message, state: FSMContext):
         [InlineKeyboardButton(text="🔧 Техническая проблема в номере", callback_data="service_technical")],
         [InlineKeyboardButton(text="🍽 Услуги ресторана", callback_data="service_restaurant")],
         [InlineKeyboardButton(text="❓ Другой вопрос", callback_data="service_other")],
-        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")],
-        [InlineKeyboardButton(text="🏠 Назад в главное меню", callback_data="back_main_menu")]
+        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts"), InlineKeyboardButton(text="🏠 Назад в главное меню", callback_data="back_main_menu")]
     ])
+    await send_welcome_with_photo(message)
     await message.answer("Выберите услугу:", reply_markup=keyboard)
 
 
@@ -313,7 +313,7 @@ async def handle_comment(message: Message, state: FSMContext):
 async def handle_custom_problem(message: Message, state: FSMContext):
     problem_text = message.text.strip()
     await state.update_data(service_text=problem_text, service_type="custom")
-    await ask_for_comment(message, state, "Спасибо за обращение, ваш вопрос принят в работу", "custom")
+    await process_service_request(message, state, None)
 
 async def process_service_request(message: Message, state: FSMContext, comment: str = None):
     user_id = message.from_user.id
@@ -322,20 +322,15 @@ async def process_service_request(message: Message, state: FSMContext, comment: 
     room = data.get("room", "не указан")
     service_text = data.get("service_text", "")
     service_type = data.get("service_type", "other")
-    
+
     appeal_id = await create_service_request(user_id, username, room, service_type, service_text, comment)
-    
+
     final_message = service_text
     if comment:
         final_message += f"\n\nВаш комментарий: {comment}"
-    
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛎 Новая заявка", callback_data="new_request")],
-        [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts")]
-    ])
-    
-    await message.answer(final_message, reply_markup=keyboard)
-    await state.update_data(room=room)
+
+    await message.answer(final_message)
+    await show_service_menu(message, state)
 
 
 @router.callback_query(F.data.startswith("user_reopen:"))
