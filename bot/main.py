@@ -81,14 +81,22 @@ async def send_welcome_with_photo(message: Message):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         photo_path = os.path.join(current_dir, '..', 'images', 'hotel_welcome.jpg')
         photo_path = os.path.abspath(photo_path)
-        
+
+        logger.info(f"Looking for photo at: {photo_path}")
+        logger.info(f"Photo exists: {os.path.exists(photo_path)}")
+
         if os.path.exists(photo_path):
             photo = FSInputFile(photo_path)
             await message.answer_photo(photo, caption=welcome_text)
+            logger.info("Photo sent successfully")
         else:
+            logger.warning(f"Photo not found at {photo_path}")
             await message.answer(welcome_text)
     except Exception as e:
         logger.error(f"Error sending photo: {e}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         await message.answer(welcome_text)
 
 

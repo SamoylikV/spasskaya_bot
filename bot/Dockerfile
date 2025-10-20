@@ -14,6 +14,8 @@ COPY config.py .
 COPY .env .
 COPY bot/ ./bot/
 COPY db/ ./db/
+COPY images/ ./images/
+COPY menus/ ./menus/
 ENV PYTHONPATH=/app
 
 CMD ["python", "bot/main.py"]
