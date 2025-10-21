@@ -184,20 +184,21 @@ async def create_service_request(user_id, username, room, service_type, descript
         await conn.close()
     return appeal_id
 
-# Removed ask_for_comment function - comments are no longer supported
 
 @router.callback_query(F.data == "service_iron")
 async def service_iron(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    service_text = "🧹 Нужен утюг и гладильная доска"
     response_text = "Спасибо за обращение, уже несем!"
-    await state.update_data(service_text=response_text, service_type="iron")
+    await state.update_data(service_text=service_text, service_type="iron")
     await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "service_laundry")
 async def service_laundry(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    service_text = "👕 Услуги прачечной"
     response_text = "Спасибо за обращение, мы свяжемся с вами в ближайшее время."
-    await state.update_data(service_text=response_text, service_type="laundry")
+    await state.update_data(service_text=service_text, service_type="laundry")
     await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "service_technical")
@@ -215,22 +216,25 @@ async def service_technical(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "tech_ac")
 async def tech_ac(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    service_text = "❄️ Кондиционер"
     response_text = "Спасибо! Информация передана в Техническую службу"
-    await state.update_data(service_text=response_text, service_type="technical_ac")
+    await state.update_data(service_text=service_text, service_type="technical_ac")
     await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "tech_wifi")
 async def tech_wifi(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    service_text = "📶 WiFi"
     response_text = "Спасибо! Информация передана в IT-службу"
-    await state.update_data(service_text=response_text, service_type="technical_wifi")
+    await state.update_data(service_text=service_text, service_type="technical_wifi")
     await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "tech_tv")
 async def tech_tv(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    service_text = "📺 Телевизор"
     response_text = "Спасибо! Информация передана в Техническую службу"
-    await state.update_data(service_text=response_text, service_type="technical_tv")
+    await state.update_data(service_text=service_text, service_type="technical_tv")
     await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "tech_other")
@@ -285,8 +289,9 @@ async def menu_restaurant(callback: CallbackQuery):
 @router.callback_query(F.data == "connect_restaurant")
 async def connect_restaurant(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    service_text = "📞 Соедините с рестораном"
     response_text = "Мы перезвоним вам в ближайшее время"
-    await state.update_data(service_text=response_text, service_type="restaurant_call")
+    await state.update_data(service_text=service_text, service_type="restaurant_call")
     await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "service_other")
@@ -306,7 +311,6 @@ async def new_request(callback: CallbackQuery, state: FSMContext):
     await show_service_menu(callback.message, state)
 
 
-# Removed handle_comment handler - comments are no longer supported
 
 @router.message(UserAppeal.waiting_custom_problem)
 async def handle_custom_problem(message: Message, state: FSMContext):
