@@ -47,7 +47,6 @@ async def show_service_menu(message: Message, state: FSMContext):
         [InlineKeyboardButton(text="❓ Другой вопрос", callback_data="service_other")],
         [InlineKeyboardButton(text="📞 Контакты", callback_data="menu_contacts"), InlineKeyboardButton(text="🏠 Назад в главное меню", callback_data="back_main_menu")]
     ])
-    await send_welcome_with_photo(message)
     await message.answer("Выберите услугу:", reply_markup=keyboard)
 
 
@@ -188,11 +187,8 @@ async def create_service_request(user_id, username, room, service_type, descript
 
 async def ask_for_comment(message: Message, state: FSMContext, service_text: str, service_type: str):
     await state.update_data(service_text=service_text, service_type=service_type)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Отправить без комментария", callback_data="send_without_comment")]
-    ])
     await state.set_state(UserAppeal.waiting_comment)
-    await message.answer(f"{service_text}\n\nМожете добавить комментарий (необязательно):", reply_markup=keyboard)
+    await message.answer(f"{service_text}\n\nМожете добавить комментарий (необязательно):")
 
 @router.callback_query(F.data == "service_iron")
 async def service_iron(callback: CallbackQuery, state: FSMContext):
@@ -307,15 +303,19 @@ async def new_request(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await show_service_menu(callback.message, state)
 
-@router.callback_query(F.data == "send_without_comment")
-async def send_without_comment(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await process_service_request(callback.message, state, None)
 
 @router.message(UserAppeal.waiting_comment)
 async def handle_comment(message: Message, state: FSMContext):
     comment = message.text.strip()
+    data = await state.get_data()
+    service_text = data.get("service_text", "")
+    service_type = data.get("service_type", "other")
+
     await process_service_request(message, state, comment)
+
+    if comment:
+        await add_message(data.get("last_appeal_id"), "user", f"Комментарий: {comment}")
+        await message.answer("✅ Комментарий добавлен к вашей заявке!")
 
 @router.message(UserAppeal.waiting_custom_problem)
 async def handle_custom_problem(message: Message, state: FSMContext):
@@ -333,11 +333,9 @@ async def process_service_request(message: Message, state: FSMContext, comment: 
 
     appeal_id = await create_service_request(user_id, username, room, service_type, service_text, comment)
 
-    final_message = service_text
-    if comment:
-        final_message += f"\n\nВаш комментарий: {comment}"
+    await state.update_data(last_appeal_id=appeal_id)
 
-    await message.answer(final_message)
+    await message.answer("✅ Ваша заявка отправлена!")
     await show_service_menu(message, state)
 
 

@@ -123,7 +123,6 @@ async def appeals_page(
     
     total_pages = (total + limit - 1) // limit
     
-    # Request type options for the filter
     request_type_options = {
         'iron': 'Утюг и гладильная доска',
         'laundry': 'Услуги прачечной',

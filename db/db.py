@@ -328,7 +328,6 @@ async def get_appeals_by_type():
     try:
         type_groups = {}
         
-        # Define type mappings
         type_names = {
             'iron': 'Утюг и гладильная доска',
             'laundry': 'Услуги прачечной',
