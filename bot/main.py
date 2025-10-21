@@ -29,7 +29,6 @@ class RoomInput(StatesGroup):
 class UserAppeal(StatesGroup):
     waiting_text = State()
     waiting_reply = State()
-    waiting_comment = State()
     waiting_custom_problem = State()
 
 
@@ -185,22 +184,21 @@ async def create_service_request(user_id, username, room, service_type, descript
         await conn.close()
     return appeal_id
 
-async def ask_for_comment(message: Message, state: FSMContext, service_text: str, service_type: str):
-    await state.update_data(service_text=service_text, service_type=service_type)
-    await state.set_state(UserAppeal.waiting_comment)
-    await message.answer(f"{service_text}\n\nМожете добавить комментарий (необязательно):")
+# Removed ask_for_comment function - comments are no longer supported
 
 @router.callback_query(F.data == "service_iron")
 async def service_iron(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     response_text = "Спасибо за обращение, уже несем!"
-    await ask_for_comment(callback.message, state, response_text, "iron")
+    await state.update_data(service_text=response_text, service_type="iron")
+    await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "service_laundry")
 async def service_laundry(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     response_text = "Спасибо за обращение, мы свяжемся с вами в ближайшее время."
-    await ask_for_comment(callback.message, state, response_text, "laundry")
+    await state.update_data(service_text=response_text, service_type="laundry")
+    await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "service_technical")
 async def service_technical(callback: CallbackQuery, state: FSMContext):
@@ -218,19 +216,22 @@ async def service_technical(callback: CallbackQuery, state: FSMContext):
 async def tech_ac(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     response_text = "Спасибо! Информация передана в Техническую службу"
-    await ask_for_comment(callback.message, state, response_text, "technical_ac")
+    await state.update_data(service_text=response_text, service_type="technical_ac")
+    await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "tech_wifi")
 async def tech_wifi(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     response_text = "Спасибо! Информация передана в IT-службу"
-    await ask_for_comment(callback.message, state, response_text, "technical_wifi")
+    await state.update_data(service_text=response_text, service_type="technical_wifi")
+    await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "tech_tv")
 async def tech_tv(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     response_text = "Спасибо! Информация передана в Техническую службу"
-    await ask_for_comment(callback.message, state, response_text, "technical_tv")
+    await state.update_data(service_text=response_text, service_type="technical_tv")
+    await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "tech_other")
 async def tech_other(callback: CallbackQuery, state: FSMContext):
@@ -285,7 +286,8 @@ async def menu_restaurant(callback: CallbackQuery):
 async def connect_restaurant(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     response_text = "Мы перезвоним вам в ближайшее время"
-    await ask_for_comment(callback.message, state, response_text, "restaurant_call")
+    await state.update_data(service_text=response_text, service_type="restaurant_call")
+    await process_service_request(callback.message, state, None)
 
 @router.callback_query(F.data == "service_other")
 async def service_other(callback: CallbackQuery, state: FSMContext):
@@ -304,18 +306,7 @@ async def new_request(callback: CallbackQuery, state: FSMContext):
     await show_service_menu(callback.message, state)
 
 
-@router.message(UserAppeal.waiting_comment)
-async def handle_comment(message: Message, state: FSMContext):
-    comment = message.text.strip()
-    data = await state.get_data()
-    service_text = data.get("service_text", "")
-    service_type = data.get("service_type", "other")
-
-    await process_service_request(message, state, comment)
-
-    if comment:
-        await add_message(data.get("last_appeal_id"), "user", f"Комментарий: {comment}")
-        await message.answer("✅ Комментарий добавлен к вашей заявке!")
+# Removed handle_comment handler - comments are no longer supported
 
 @router.message(UserAppeal.waiting_custom_problem)
 async def handle_custom_problem(message: Message, state: FSMContext):
