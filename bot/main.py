@@ -489,8 +489,8 @@ async def check_message_queue():
                                 reply_markup = InlineKeyboardMarkup(inline_keyboard=buttons)
                         
                         await bot.send_message(
-                            msg['user_id'],
-                            message_text,
+                            chat_id=msg['user_id'],
+                            text=message_text,
                             reply_markup=reply_markup
                         )
                         
@@ -499,13 +499,23 @@ async def check_message_queue():
                     except Exception as e:
                         logger.error(f"Failed to send message to user {msg['user_id']}: {e}")
 
-                        try:
-                            await conn.execute(
-                                "UPDATE pending_admin_messages SET sent = FALSE WHERE id = $1",
-                                msg['id']
-                            )
-                        except Exception as rollback_error:
-                            logger.error(f"Failed to rollback message status: {rollback_error}")
+                        if "Forbidden: bots can't send messages to bots" in str(e):
+                            logger.warning(f"User {msg['user_id']} blocked the bot or is a bot - marking as sent")
+                            try:
+                                await conn.execute(
+                                    "UPDATE pending_admin_messages SET sent = TRUE WHERE id = $1",
+                                    msg['id']
+                                )
+                            except Exception as rollback_error:
+                                logger.error(f"Failed to mark message as sent: {rollback_error}")
+                        else:
+                            try:
+                                await conn.execute(
+                                    "UPDATE pending_admin_messages SET sent = FALSE WHERE id = $1",
+                                    msg['id']
+                                )
+                            except Exception as rollback_error:
+                                logger.error(f"Failed to rollback message status: {rollback_error}")
                         
             finally:
                 await conn.close()

@@ -253,19 +253,11 @@ async def reply_to_appeal(appeal_id: int, request: Request, admin: str = Depends
             if appeal:
                 admin_message_text = f"📢 Ответ администратора на обращение #{appeal_id}:\n\n{message}"
                 
-                existing = await conn.fetchrow(
-                    """SELECT id FROM pending_admin_messages 
-                       WHERE user_id = $1 AND message = $2 AND appeal_id = $3 
-                       AND created_at > NOW() - INTERVAL '1 minute'""",
+                await conn.execute(
+                    """INSERT INTO pending_admin_messages (user_id, message, appeal_id)
+                       VALUES ($1, $2, $3)""",
                     appeal['user_id'], admin_message_text, appeal_id
                 )
-                
-                if not existing:
-                    await conn.execute(
-                        """INSERT INTO pending_admin_messages (user_id, message, appeal_id) 
-                           VALUES ($1, $2, $3)""",
-                        appeal['user_id'], admin_message_text, appeal_id
-                    )
         finally:
             await conn.close()
         
