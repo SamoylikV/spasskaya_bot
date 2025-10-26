@@ -88,8 +88,12 @@ class MessageBridge:
             status = update['status']
             user_id = update['user_id']
             
+
+            if status == 'received':
+                logger.info(f"Skipping notification for 'received' status on appeal {appeal_id}")
+                return
+            
             status_messages = {
-                'received': 'Ваше обращение принято в работу ⏳',
                 'done': 'Ваше обращение выполнено ✅',
                 'declined': 'Ваше обращение отклонено ❌'
             }
