@@ -340,7 +340,7 @@ async def add_comment(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "send_no_comment")
 async def send_no_comment(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await process_service_request(callback.message, state, None)
+    await process_service_request(callback, state, None)
 
 
 
@@ -354,11 +354,22 @@ async def handle_custom_problem(message: Message, state: FSMContext):
 @router.message(UserAppeal.waiting_comment)
 async def handle_comment(message: Message, state: FSMContext):
     comment_text = message.text.strip()
+    await state.update_data(comment=comment_text)
+    data = await state.get_data()
+    if data.get('is_callback'):
+        return
     await process_service_request(message, state, comment_text)
 
-async def process_service_request(message: Message, state: FSMContext, comment: str = None):
-    user_id = message.from_user.id
-    username = message.from_user.username or str(user_id)
+async def process_service_request(event, state: FSMContext, comment: str = None):
+    if isinstance(event, CallbackQuery):
+        user_id = event.from_user.id
+        username = event.from_user.username or str(user_id)
+        message = event.message
+    else:
+        user_id = event.from_user.id
+        username = event.from_user.username or str(user_id)
+        message = event
+    
     data = await state.get_data()
     room = data.get("room", "не указан")
     service_text = data.get("service_text", "")
@@ -464,36 +475,46 @@ async def check_message_queue():
                        ORDER BY created_at LIMIT 10"""
                 )
                 
+                bot_info = await bot.get_me()
+                
                 for msg in pending_messages:
                     try:
+                        if msg['user_id'] == bot_info.id:
+                            logger.warning(f"Skipping message to bot itself (ID: {msg['user_id']})")
+                            await conn.execute(
+                                "UPDATE pending_admin_messages SET sent = TRUE WHERE id = $1",
+                                msg['id']
+                            )
+                            continue
 
                         await conn.execute(
                             "UPDATE pending_admin_messages SET sent = TRUE WHERE id = $1",
                             msg['id']
                         )
-                        
+
                         message_text = msg['message']
                         reply_markup = None
-                        
+
                         if msg['appeal_id']:
                             from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                             buttons = []
-                            
+
                             if 'Ответ администратора' in message_text or 'Ваше обращение' in message_text:
                                 buttons.append([InlineKeyboardButton(text="✏️ Ответить", callback_data=f"user_reply:{msg['appeal_id']}")])
-                            
+
                             if 'выполнено ✅' in message_text:
                                 buttons.append([InlineKeyboardButton(text="❌ Не решено", callback_data=f"user_reopen:{msg['appeal_id']}")])
-                            
+
                             if buttons:
                                 reply_markup = InlineKeyboardMarkup(inline_keyboard=buttons)
-                        
+
                         await bot.send_message(
                             chat_id=msg['user_id'],
                             text=message_text,
-                            reply_markup=reply_markup
+                            reply_markup=reply_markup,
+                            disable_notification=False
                         )
-                        
+
                         logger.info(f"Sent admin message to user {msg['user_id']}")
                         
                     except Exception as e:
