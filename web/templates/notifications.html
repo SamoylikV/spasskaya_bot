@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки уведомлений - Spasskaya Hotel Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-4"><i class="fas fa-bell"></i> Настройки уведомлений</h1>
+        <p class="text-muted">Управление списком получателей уведомлений о новых заявках</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-users"></i> Получатели уведомлений
+                </h6>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecipientModal">
+                    <i class="fas fa-plus"></i> Добавить получателя
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Как получить Chat ID:</strong> Пользователь должен написать боту команду <code>/start</code>, 
+                    после чего его Chat ID можно найти в логах бота или использовать специального бота, 
+                    например <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="recipientsTable">
+                        <thead>
+                            <tr>
+                                <th width="20%">Chat ID</th>
+                                <th width="25%">Username</th>
+                                <th width="15%">Статус</th>
+                                <th width="20%">Дата добавления</th>
+                                <th width="20%">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recipients %}
+                                {% for recipient in recipients %}
+                                <tr data-chat-id="{{ recipient.chat_id }}">
+                                    <td><code>{{ recipient.chat_id }}</code></td>
+                                    <td>
+                                        {% if recipient.username %}
+                                            @{{ recipient.username }}
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if recipient.is_active %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> Активен
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-times"></i> Отключен
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ recipient.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-{% if recipient.is_active %}warning{% else %}success{% endif %} toggle-recipient"
+                                                    data-chat-id="{{ recipient.chat_id }}"
+                                                    data-active="{{ recipient.is_active }}">
+                                                <i class="fas fa-{% if recipient.is_active %}pause{% else %}play{% endif %}"></i>
+                                                {% if recipient.is_active %}Отключить{% else %}Включить{% endif %}
+                                            </button>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-danger delete-recipient"
+                                                    data-chat-id="{{ recipient.chat_id }}">
+                                                <i class="fas fa-trash"></i> Удалить
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p>Нет получателей уведомлений. Добавьте первого получателя.</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для добавления получателя -->
+<div class="modal fade" id="addRecipientModal" tabindex="-1" aria-labelledby="addRecipientModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addRecipientModalLabel">
+                    <i class="fas fa-user-plus"></i> Добавить получателя уведомлений
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addRecipientForm">
+                    <div class="mb-3">
+                        <label for="chatId" class="form-label">Chat ID <span class="text-danger">*</span></label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="chatId" 
+                               name="chat_id" 
+                               required
+                               placeholder="Например: 123456789">
+                        <div class="form-text">Telegram Chat ID пользователя (только цифры)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username (опционально)</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="username" 
+                               name="username"
+                               placeholder="Например: ivan_petrov">
+                        <div class="form-text">Telegram username для удобства идентификации</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-primary" id="saveRecipientBtn">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addRecipientModal = new bootstrap.Modal(document.getElementById('addRecipientModal'));
+    
+    // Добавление получателя
+    document.getElementById('saveRecipientBtn').addEventListener('click', async function() {
+        const form = document.getElementById('addRecipientForm');
+        const formData = new FormData(form);
+        
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/notification-recipients', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('success', 'Получатель успешно добавлен!');
+                addRecipientModal.hide();
+                form.reset();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('danger', 'Ошибка при добавлении получателя: ' + (data.detail || 'неизвестная ошибка'));
+            }
+        } catch (error) {
+            showAlert('danger', 'Ошибка при добавлении получателя: ' + error.message);
+        }
+    });
+    
+    // Переключение статуса
+    document.querySelectorAll('.toggle-recipient').forEach(button => {
+        button.addEventListener('click', async function() {
+            const chatId = this.dataset.chatId;
+            const isActive = this.dataset.active === 'True';
+            const newStatus = !isActive;
+            
+            const formData = new FormData();
+            formData.append('is_active', newStatus);
+            
+            try {
+                const response = await fetch(`/api/notification-recipients/${chatId}/toggle`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', `Получатель ${newStatus ? 'активирован' : 'деактивирован'}!`);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert('danger', 'Ошибка при изменении статуса: ' + (data.detail || 'неизвестная ошибка'));
+                }
+            } catch (error) {
+                showAlert('danger', 'Ошибка при изменении статуса: ' + error.message);
+            }
+        });
+    });
+    
+    // Удаление получателя
+    document.querySelectorAll('.delete-recipient').forEach(button => {
+        button.addEventListener('click', async function() {
+            const chatId = this.dataset.chatId;
+            
+            if (!confirm('Вы уверены, что хотите удалить этого получателя?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/notification-recipients/${chatId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', 'Получатель успешно удален!');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert('danger', 'Ошибка при удалении получателя: ' + (data.detail || 'неизвестная ошибка'));
+                }
+            } catch (error) {
+                showAlert('danger', 'Ошибка при удалении получателя: ' + error.message);
+            }
+        });
+    });
+    
+    function showAlert(type, message) {
+        const alertDiv = document.getElementById('statusAlert');
+        const messageSpan = document.getElementById('statusMessage');
+        
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        messageSpan.textContent = message;
+        alertDiv.style.display = 'block';
+        
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.style.display = 'none', 150);
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}

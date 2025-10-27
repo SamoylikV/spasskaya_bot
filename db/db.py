@@ -68,6 +68,15 @@ async def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS notification_settings (
+            id SERIAL PRIMARY KEY,
+            chat_id BIGINT UNIQUE NOT NULL,
+            username TEXT,
+            is_active BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_status ON appeals(status);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_room ON appeals(room);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_created_at ON appeals(created_at);")
@@ -354,3 +363,54 @@ async def get_appeals_by_type():
         await conn.close()
     
     return type_groups
+
+
+async def add_notification_recipient(chat_id, username=None):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute(
+            """INSERT INTO notification_settings (chat_id, username) 
+               VALUES ($1, $2) 
+               ON CONFLICT (chat_id) DO UPDATE SET username=$2, is_active=true""",
+            chat_id, username
+        )
+    finally:
+        await conn.close()
+
+
+async def remove_notification_recipient(chat_id):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute(
+            "DELETE FROM notification_settings WHERE chat_id=$1",
+            chat_id
+        )
+    finally:
+        await conn.close()
+
+
+async def get_notification_recipients(active_only=True):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        if active_only:
+            rows = await conn.fetch(
+                "SELECT * FROM notification_settings WHERE is_active=true ORDER BY created_at"
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT * FROM notification_settings ORDER BY created_at"
+            )
+    finally:
+        await conn.close()
+    return rows
+
+
+async def toggle_notification_recipient(chat_id, is_active):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute(
+            "UPDATE notification_settings SET is_active=$1 WHERE chat_id=$2",
+            is_active, chat_id
+        )
+    finally:
+        await conn.close()

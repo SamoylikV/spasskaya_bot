@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Request, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, HTTPException, Depends, WebSocket, WebSocketDisconnect, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from datetime import datetime, timedelta
 import secrets
@@ -17,7 +17,8 @@ from config import DB_URL, ADMIN_PASSWORD
 from db.db import (
     get_appeals, get_appeal_with_messages, update_status, add_message,
     get_appeals_stats, assign_appeal_to_admin, bulk_update_status,
-    get_appeals_by_type
+    get_appeals_by_type, get_notification_recipients, add_notification_recipient,
+    remove_notification_recipient, toggle_notification_recipient
 )
 
 app = FastAPI(title="Spasskaya Hotel Admin Panel", version="3.1")
@@ -25,14 +26,20 @@ app = FastAPI(title="Spasskaya Hotel Admin Panel", version="3.1")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-security = HTTPBasic()
+security = HTTPBasic(realm="Spasskaya Hotel Admin")
 
 redis_client = None
 
 async def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, "admin")
     correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
-    if not (credentials.username == "admin" and correct_password):
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+    
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": 'Basic realm="Spasskaya Hotel Admin"'},
+        )
     return credentials.username
 
 async def init_redis():
@@ -329,6 +336,59 @@ async def appeals_by_type_page(request: Request, admin: str = Depends(get_curren
         "request": request,
         "type_groups": type_groups
     })
+
+@app.get("/notifications", response_class=HTMLResponse)
+async def notifications_page(request: Request, admin: str = Depends(get_current_admin)):
+    recipients = await get_notification_recipients(active_only=False)
+    
+    return templates.TemplateResponse("notifications.html", {
+        "request": request,
+        "recipients": recipients
+    })
+
+@app.get("/api/notification-recipients")
+async def get_recipients(admin: str = Depends(get_current_admin)):
+    recipients = await get_notification_recipients(active_only=False)
+    return {"recipients": [dict(r) for r in recipients]}
+
+@app.post("/api/notification-recipients")
+async def add_recipient(request: Request, admin: str = Depends(get_current_admin)):
+    try:
+        form = await request.form()
+        chat_id = form.get("chat_id")
+        username = form.get("username")
+        
+        if not chat_id:
+            raise HTTPException(status_code=400, detail="Chat ID is required")
+        
+        try:
+            chat_id = int(chat_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Chat ID must be a number")
+        
+        await add_notification_recipient(chat_id, username)
+        return {"success": True, "chat_id": chat_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding recipient: {str(e)}")
+
+@app.delete("/api/notification-recipients/{chat_id}")
+async def delete_recipient(chat_id: int, admin: str = Depends(get_current_admin)):
+    try:
+        await remove_notification_recipient(chat_id)
+        return {"success": True, "chat_id": chat_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error removing recipient: {str(e)}")
+
+@app.post("/api/notification-recipients/{chat_id}/toggle")
+async def toggle_recipient(chat_id: int, request: Request, admin: str = Depends(get_current_admin)):
+    try:
+        form = await request.form()
+        is_active = form.get("is_active", "true").lower() == "true"
+        
+        await toggle_notification_recipient(chat_id, is_active)
+        return {"success": True, "chat_id": chat_id, "is_active": is_active}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error toggling recipient: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

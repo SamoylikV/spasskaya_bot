@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TOKEN, DB_URL
-from db.db import create_appeal, add_message, init_db
+from db.db import create_appeal, add_message, init_db, get_notification_recipients
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -171,6 +171,47 @@ async def help_cmd(message: Message):
     await message.answer(help_text, parse_mode="HTML")
 
 
+async def send_new_appeal_notification(appeal_id, room, service_type, description):
+    try:
+        recipients = await get_notification_recipients(active_only=True)
+        
+        service_type_names = {
+            'iron': '🧺 Утюг и гладильная доска',
+            'laundry': '👕 Услуги прачечной',
+            'technical_ac': '❄️ Кондиционер',
+            'technical_wifi': '📶 WiFi',
+            'technical_tv': '📺 Телевизор',
+            'technical_other': '🔧 Другие технические проблемы',
+            'restaurant_call': '📞 Соединить с рестораном',
+            'custom': '❓ Другие вопросы',
+            'other': '❓ Прочее'
+        }
+        
+        service_name = service_type_names.get(service_type, service_type)
+        
+        notification_text = f"""🔔 <b>Новая заявка #{appeal_id}</b>
+
+🛏️ Комната: <b>{room}</b>
+📋 Тип: {service_name}
+✉️ Описание: {description}
+
+🕗 Время: {datetime.now().strftime('%d.%m.%Y %H:%M')}"""
+        
+        for recipient in recipients:
+            try:
+                await bot.send_message(
+                    chat_id=recipient['chat_id'],
+                    text=notification_text,
+                    parse_mode="HTML",
+                    disable_notification=False
+                )
+                logger.info(f"Notification sent to {recipient['chat_id']} for appeal #{appeal_id}")
+            except Exception as e:
+                logger.error(f"Failed to send notification to {recipient['chat_id']}: {e}")
+    except Exception as e:
+        logger.error(f"Error in send_new_appeal_notification: {e}")
+
+
 async def create_service_request(user_id, username, room, service_type, description, optional_comment=None):
     conn = await asyncpg.connect(DB_URL)
     try:
@@ -181,6 +222,8 @@ async def create_service_request(user_id, username, room, service_type, descript
         await add_message(appeal_id, "user", description)
         if optional_comment:
             await add_message(appeal_id, "user", f"Комментарий: {optional_comment}")
+        
+        await send_new_appeal_notification(appeal_id, room, service_type, description)
     finally:
         await conn.close()
     return appeal_id
