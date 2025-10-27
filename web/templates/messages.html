@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Управление текстами сообщений - Spasskaya Hotel Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-4"><i class="fas fa-comments"></i> Управление текстами сообщений</h1>
+        <p class="text-muted">Редактирование текстов, которые используются в боте и веб-приложении</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-edit"></i> Шаблоны сообщений
+                </h6>
+                <button type="button" class="btn btn-success btn-sm" onclick="saveAllChanges()">
+                    <i class="fas fa-save"></i> Сохранить все изменения
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Информация:</strong> Изменения вступят в силу сразу после сохранения.
+                    Тексты с плейсхолдерами (например, {room}, {appeal_id}) будут автоматически заменены на соответствующие значения.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="messagesTable">
+                        <thead>
+                            <tr>
+                                <th width="20%">Ключ</th>
+                                <th width="25%">Описание</th>
+                                <th width="45%">Текст</th>
+                                <th width="10%">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if templates %}
+                                {% for template in templates %}
+                                <tr data-key="{{ template.key }}">
+                                    <td>
+                                        <code>{{ template.key }}</code>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ template.description or '—' }}</small>
+                                    </td>
+                                    <td>
+                                        <textarea
+                                            class="form-control message-text"
+                                            data-key="{{ template.key }}"
+                                            rows="2"
+                                            placeholder="Введите текст сообщения">{{ template.text }}</textarea>
+                                    </td>
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary save-template"
+                                                data-key="{{ template.key }}">
+                                            <i class="fas fa-save"></i> Сохранить
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p>Шаблоны сообщений не найдены</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Сохранение отдельного шаблона
+    document.querySelectorAll('.save-template').forEach(button => {
+        button.addEventListener('click', async function() {
+            const key = this.dataset.key;
+            const textarea = document.querySelector(`textarea[data-key="${key}"]`);
+            const text = textarea.value.trim();
+
+            if (!text) {
+                showAlert('danger', 'Текст сообщения не может быть пустым!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/messages/${key}`, {
+                    method: 'POST',
+                    body: new FormData(document.createElement('form')).append('text', text)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', `Шаблон "${key}" успешно сохранен!`);
+                    this.innerHTML = '<i class="fas fa-check"></i> Сохранено';
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="fas fa-save"></i> Сохранить';
+                    }, 2000);
+                } else {
+                    showAlert('danger', 'Ошибка при сохранении: ' + (data.detail || 'неизвестная ошибка'));
+                }
+            } catch (error) {
+                showAlert('danger', 'Ошибка при сохранении: ' + error.message);
+            }
+        });
+    });
+
+    // Сохранение всех изменений
+    window.saveAllChanges = async function() {
+        const textareas = document.querySelectorAll('.message-text');
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const textarea of textareas) {
+            const key = textarea.dataset.key;
+            const text = textarea.value.trim();
+
+            if (!text) {
+                errorCount++;
+                continue;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('text', text);
+
+                const response = await fetch(`/api/messages/${key}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (error) {
+                errorCount++;
+            }
+        }
+
+        if (errorCount === 0) {
+            showAlert('success', `Все изменения сохранены успешно! (${successCount} шаблонов)`);
+        } else if (successCount > 0) {
+            showAlert('warning', `Сохранено ${successCount} шаблонов, ${errorCount} ошибок`);
+        } else {
+            showAlert('danger', 'Не удалось сохранить изменения');
+        }
+    };
+
+    function showAlert(type, message) {
+        const alertDiv = document.getElementById('statusAlert');
+        const messageSpan = document.getElementById('statusMessage');
+
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        messageSpan.textContent = message;
+        alertDiv.style.display = 'block';
+
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.style.display = 'none', 150);
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

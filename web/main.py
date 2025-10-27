@@ -18,7 +18,8 @@ from db.db import (
     get_appeals, get_appeal_with_messages, update_status, add_message,
     get_appeals_stats, assign_appeal_to_admin, bulk_update_status,
     get_appeals_by_type, get_notification_recipients, add_notification_recipient,
-    remove_notification_recipient, toggle_notification_recipient
+    remove_notification_recipient, toggle_notification_recipient,
+    get_message_template, get_all_message_templates, update_message_template
 )
 
 app = FastAPI(title="Spasskaya Hotel Admin Panel", version="3.1")
@@ -193,9 +194,9 @@ async def update_appeal_status(appeal_id: int, request: Request, admin: str = De
             conn = await asyncpg.connect(DB_URL)
             try:
                 status_messages = {
-                    'received': 'получено в работу ✅',
-                    'declined': 'отклонено ❌',
-                    'done': 'выполнено ✅'
+                    'received': await get_message_template('status_received') or 'получено в работу ✅',
+                    'declined': await get_message_template('status_declined') or 'отклонено ❌',
+                    'done': await get_message_template('status_done_full') or 'выполнено ✅'
                 }
 
                 status_msg = status_messages.get(status, f"изменён на {status}")
@@ -258,8 +259,9 @@ async def reply_to_appeal(appeal_id: int, request: Request, admin: str = Depends
             appeal = await conn.fetchrow("SELECT user_id FROM appeals WHERE id=$1", appeal_id)
             
             if appeal:
-                admin_message_text = f"📢 Ответ администратора на обращение #{appeal_id}:\n\n{message}"
-                
+                admin_reply_prefix = await get_message_template('admin_reply_prefix') or "📢 Ответ администратора на обращение #{appeal_id}:\n\n{message}"
+                admin_message_text = admin_reply_prefix.format(appeal_id=appeal_id, message=message)
+
                 await conn.execute(
                     """INSERT INTO pending_admin_messages (user_id, message, appeal_id)
                        VALUES ($1, $2, $3)""",
@@ -384,11 +386,38 @@ async def toggle_recipient(chat_id: int, request: Request, admin: str = Depends(
     try:
         form = await request.form()
         is_active = form.get("is_active", "true").lower() == "true"
-        
+
         await toggle_notification_recipient(chat_id, is_active)
         return {"success": True, "chat_id": chat_id, "is_active": is_active}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error toggling recipient: {str(e)}")
+
+@app.get("/messages", response_class=HTMLResponse)
+async def messages_page(request: Request, admin: str = Depends(get_current_admin)):
+    templates_data = await get_all_message_templates()
+    return templates.TemplateResponse("messages.html", {
+        "request": request,
+        "templates": templates_data
+    })
+
+@app.get("/api/messages")
+async def get_messages(admin: str = Depends(get_current_admin)):
+    templates_data = await get_all_message_templates()
+    return {"templates": [dict(t) for t in templates_data]}
+
+@app.post("/api/messages/{template_key}")
+async def update_message(template_key: str, request: Request, admin: str = Depends(get_current_admin)):
+    try:
+        form = await request.form()
+        text = form.get("text")
+
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required")
+
+        await update_message_template(template_key, text)
+        return {"success": True, "key": template_key}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating message: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
