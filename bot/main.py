@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TOKEN, DB_URL
-from db.db import create_appeal, add_message, init_db, get_notification_recipients, get_message_template, init_message_templates, get_current_time_in_timezone, format_time_for_display
+from db.db import create_appeal, add_message, init_db, get_notification_recipients, get_message_template, init_message_templates, get_current_time_in_timezone, format_time_for_display, init_settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

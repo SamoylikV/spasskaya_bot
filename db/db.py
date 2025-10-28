@@ -26,13 +26,13 @@ async def init_db():
             updated_at TIMESTAMP DEFAULT now()
         );
         """)
-        
+
         await conn.execute("""
-        ALTER TABLE appeals 
+        ALTER TABLE appeals
         ADD COLUMN IF NOT EXISTS request_type TEXT DEFAULT 'other',
         ADD COLUMN IF NOT EXISTS optional_comment TEXT;
         """)
-        
+
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id SERIAL PRIMARY KEY,
@@ -106,6 +106,10 @@ async def init_db():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_created_at ON appeals(created_at);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_user_id ON appeals(user_id);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_request_type ON appeals(request_type);")
+
+        await init_settings()
+        await init_message_templates()
+
     finally:
         await conn.close()
 

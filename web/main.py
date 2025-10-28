@@ -78,7 +78,6 @@ manager = ConnectionManager()
 @app.on_event("startup")
 async def startup():
     await init_redis()
-    await init_settings()
     conn = await asyncpg.connect(DB_URL)
     try:
         await conn.execute("""
