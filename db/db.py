@@ -1,6 +1,8 @@
 import asyncpg
 import sys
 import os
+from datetime import datetime
+import pytz
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import DB_URL
 
@@ -83,6 +85,17 @@ async def init_db():
             id SERIAL PRIMARY KEY,
             key TEXT UNIQUE NOT NULL,
             text TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            id SERIAL PRIMARY KEY,
+            key TEXT UNIQUE NOT NULL,
+            value TEXT NOT NULL,
             description TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -427,8 +440,84 @@ async def toggle_notification_recipient(chat_id, is_active):
         await conn.close()
 
 
+async def init_settings():
+    """Initialize default settings"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        settings = [
+            ('timezone', 'Europe/Moscow', 'Часовой пояс для отображения времени'),
+        ]
+
+        for key, value, description in settings:
+            await conn.execute("""
+                INSERT INTO settings (key, value, description)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (key) DO NOTHING
+            """, key, value, description)
+
+    finally:
+        await conn.close()
+
+
+async def get_setting(key):
+    """Get setting value by key"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        row = await conn.fetchrow("SELECT value FROM settings WHERE key=$1", key)
+        return row['value'] if row else None
+    finally:
+        await conn.close()
+
+
+async def update_setting(key, value):
+    """Update setting value"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute("""
+            UPDATE settings
+            SET value=$1, updated_at=CURRENT_TIMESTAMP
+            WHERE key=$2
+        """, value, key)
+    finally:
+        await conn.close()
+
+
+async def get_all_settings():
+    """Get all settings"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        rows = await conn.fetch("SELECT * FROM settings ORDER BY key")
+        return rows
+    finally:
+        await conn.close()
+
+
+def get_current_time_in_timezone():
+    try:
+        timezone_str = get_setting('timezone')
+        if not timezone_str:
+            timezone_str = 'Europe/Moscow'
+        tz = pytz.timezone(timezone_str)
+        return datetime.now(tz)
+    except Exception:
+        tz = pytz.timezone('Europe/Moscow')
+        return datetime.now(tz)
+
+
+def format_time_for_display(dt):
+    try:
+        timezone_str = get_setting('timezone')
+        if not timezone_str:
+            timezone_str = 'Europe/Moscow'
+        tz = pytz.timezone(timezone_str)
+        if dt.tzinfo is None:
+            dt = pytz.utc.localize(dt)
+        return dt.astimezone(tz).strftime('%d.%m.%Y %H:%M')
+    except Exception:
+        return dt.strftime('%d.%m.%Y %H:%M') if hasattr(dt, 'strftime') else str(dt)
+
+
 async def init_message_templates():
-    """Initialize default message templates"""
     conn = await asyncpg.connect(DB_URL)
     try:
         templates = [
@@ -566,7 +655,26 @@ async def init_message_templates():
 
             ('send_no_comment', '✅ Отправить без комментария', 'Кнопка отправки без комментария'),
 
-            ('comment_question', 'Хотите добавить комментарий к заявке?', 'Вопрос о добавлении комментария')
+            ('comment_question', 'Хотите добавить комментарий к заявке?', 'Вопрос о добавлении комментария'),
+
+            ('reply_iron', 'Ваш запрос на утюг и гладильную доску принят. Мы подготовим всё необходимое и доставим в ваш номер в ближайшее время.', 'Стандартный ответ на запрос утюга'),
+
+            ('reply_laundry', 'Ваш запрос на услуги прачечной принят. Наши специалисты свяжутся с вами для уточнения деталей.', 'Стандартный ответ на запрос прачечной'),
+
+            ('reply_technical', 'Ваш запрос на техническую поддержку принят. Наши специалисты приступят к решению проблемы в ближайшее время.', 'Стандартный ответ на техническую проблему'),
+
+            ('reply_restaurant', 'Ваш запрос на услуги ресторана принят. Наши специалисты свяжутся с вами для уточнения деталей заказа.', 'Стандартный ответ на запрос ресторана'),
+
+            ('reply_custom', 'Ваш запрос принят. Мы рассмотрим его и свяжемся с вами в ближайшее время.', 'Стандартный ответ на пользовательский запрос'),
+
+            ('user_message_notification', """💬 <b>Новое сообщение от пользователя</b>
+
+👤 Пользователь: @{username} (комната {room})
+📝 Сообщение: {message}
+
+🔔 Обращение #{appeal_id}
+
+🕗 Время: {time}""", 'Уведомление о новом сообщении пользователя')
         ]
 
         for key, text, description in templates:

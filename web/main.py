@@ -19,7 +19,9 @@ from db.db import (
     get_appeals_stats, assign_appeal_to_admin, bulk_update_status,
     get_appeals_by_type, get_notification_recipients, add_notification_recipient,
     remove_notification_recipient, toggle_notification_recipient,
-    get_message_template, get_all_message_templates, update_message_template
+    get_message_template, get_all_message_templates, update_message_template,
+    get_setting, update_setting, get_all_settings, init_settings,
+    format_time_for_display
 )
 
 app = FastAPI(title="Spasskaya Hotel Admin Panel", version="3.1")
@@ -76,6 +78,7 @@ manager = ConnectionManager()
 @app.on_event("startup")
 async def startup():
     await init_redis()
+    await init_settings()
     conn = await asyncpg.connect(DB_URL)
     try:
         await conn.execute("""
@@ -196,14 +199,18 @@ async def update_appeal_status(appeal_id: int, request: Request, admin: str = De
                 status_messages = {
                     'received': await get_message_template('status_received') or 'получено в работу ✅',
                     'declined': await get_message_template('status_declined') or 'отклонено ❌',
-                    'done': await get_message_template('status_done_full') or 'выполнено ✅'
+                    'done': await get_message_template('status_done') or 'выполнено ✅'
                 }
 
                 status_msg = status_messages.get(status, f"изменён на {status}")
                 message_text = f"📬 Ваше обращение {status_msg}"
 
                 if status == 'done':
-                    message_text += "\n\nЕсли проблема не решена, нажмите кнопку 'Не решено' ниже."
+                    done_full = await get_message_template('status_done_full')
+                    if done_full:
+                        message_text = done_full
+                    else:
+                        message_text += "\n\nЕсли проблема не решена, нажмите кнопку 'Не решено' ниже."
 
                 existing = await conn.fetchrow(
                     """SELECT id FROM pending_admin_messages 
@@ -418,6 +425,42 @@ async def update_message(template_key: str, request: Request, admin: str = Depen
         return {"success": True, "key": template_key}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating message: {str(e)}")
+
+@app.get("/api/messages/quick-reply/{request_type}")
+async def get_quick_reply(request_type: str, admin: str = Depends(get_current_admin)):
+    """Get quick reply template for specific request type"""
+    template_key = f"reply_{request_type}"
+    text = await get_message_template(template_key)
+    if not text:
+        text = await get_message_template('reply_custom') or "Ваш запрос принят. Мы рассмотрим его и свяжемся с вами в ближайшее время."
+    return {"text": text, "key": template_key}
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, admin: str = Depends(get_current_admin)):
+    settings_data = await get_all_settings()
+    return templates.TemplateResponse("settings.html", {
+        "request": request,
+        "settings": settings_data
+    })
+
+@app.get("/api/settings")
+async def get_settings(admin: str = Depends(get_current_admin)):
+    settings_data = await get_all_settings()
+    return {"settings": [dict(s) for s in settings_data]}
+
+@app.post("/api/settings/{setting_key}")
+async def update_setting_endpoint(setting_key: str, request: Request, admin: str = Depends(get_current_admin)):
+    try:
+        form = await request.form()
+        value = form.get("value")
+
+        if not value:
+            raise HTTPException(status_code=400, detail="Value is required")
+
+        await update_setting(setting_key, value)
+        return {"success": True, "key": setting_key}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating setting: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

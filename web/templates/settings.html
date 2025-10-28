@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки - Spasskaya Hotel Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-4"><i class="fas fa-cog"></i> Настройки системы</h1>
+        <p class="text-muted">Общие настройки приложения</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-sliders-h"></i> Параметры системы
+                </h6>
+                <button type="button" class="btn btn-success btn-sm" onclick="saveAllSettings()">
+                    <i class="fas fa-save"></i> Сохранить все изменения
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Информация:</strong> Изменения вступят в силу сразу после сохранения.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="settingsTable">
+                        <thead>
+                            <tr>
+                                <th width="20%">Параметр</th>
+                                <th width="25%">Описание</th>
+                                <th width="45%">Значение</th>
+                                <th width="10%">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if settings %}
+                                {% for setting in settings %}
+                                <tr data-key="{{ setting.key }}">
+                                    <td>
+                                        <code>{{ setting.key }}</code>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ setting.description or '—' }}</small>
+                                    </td>
+                                    <td>
+                                        {% if setting.key == 'timezone' %}
+                                            <select class="form-select setting-value" data-key="{{ setting.key }}">
+                                                <option value="Europe/Moscow" {% if setting.value == 'Europe/Moscow' %}selected{% endif %}>Europe/Moscow (MSK, UTC+3)</option>
+                                                <option value="Europe/Kiev" {% if setting.value == 'Europe/Kiev' %}selected{% endif %}>Europe/Kiev (EEST, UTC+3)</option>
+                                                <option value="Europe/Minsk" {% if setting.value == 'Europe/Minsk' %}selected{% endif %}>Europe/Minsk (MSK, UTC+3)</option>
+                                                <option value="Asia/Yekaterinburg" {% if setting.value == 'Asia/Yekaterinburg' %}selected{% endif %}>Asia/Yekaterinburg (+5)</option>
+                                                <option value="Asia/Omsk" {% if setting.value == 'Asia/Omsk' %}selected{% endif %}>Asia/Omsk (+6)</option>
+                                                <option value="Asia/Krasnoyarsk" {% if setting.value == 'Asia/Krasnoyarsk' %}selected{% endif %}>Asia/Krasnoyarsk (+7)</option>
+                                                <option value="Asia/Irkutsk" {% if setting.value == 'Asia/Irkutsk' %}selected{% endif %}>Asia/Irkutsk (+8)</option>
+                                                <option value="Asia/Yakutsk" {% if setting.value == 'Asia/Yakutsk' %}selected{% endif %}>Asia/Yakutsk (+9)</option>
+                                                <option value="Asia/Vladivostok" {% if setting.value == 'Asia/Vladivostok' %}selected{% endif %}>Asia/Vladivostok (+10)</option>
+                                                <option value="Asia/Magadan" {% if setting.value == 'Asia/Magadan' %}selected{% endif %}>Asia/Magadan (+11)</option>
+                                                <option value="Asia/Kamchatka" {% if setting.value == 'Asia/Kamchatka' %}selected{% endif %}>Asia/Kamchatka (+12)</option>
+                                                <option value="UTC" {% if setting.value == 'UTC' %}selected{% endif %}>UTC</option>
+                                            </select>
+                                        {% else %}
+                                            <input type="text"
+                                                   class="form-control setting-value"
+                                                   data-key="{{ setting.key }}"
+                                                   value="{{ setting.value }}">
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary save-setting"
+                                                data-key="{{ setting.key }}">
+                                            <i class="fas fa-save"></i> Сохранить
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p>Настройки не найдены</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Сохранение отдельной настройки
+    document.querySelectorAll('.save-setting').forEach(button => {
+        button.addEventListener('click', async function() {
+            const key = this.dataset.key;
+            const input = document.querySelector(`.setting-value[data-key="${key}"]`);
+            const value = input.value.trim();
+
+            if (!value) {
+                showAlert('danger', 'Значение настройки не может быть пустым!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/settings/${key}`, {
+                    method: 'POST',
+                    body: new FormData(document.createElement('form')).append('value', value)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', `Настройка "${key}" успешно сохранена!`);
+                    this.innerHTML = '<i class="fas fa-check"></i> Сохранено';
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="fas fa-save"></i> Сохранить';
+                    }, 2000);
+                } else {
+                    showAlert('danger', 'Ошибка при сохранении: ' + (data.detail || 'неизвестная ошибка'));
+                }
+            } catch (error) {
+                showAlert('danger', 'Ошибка при сохранении: ' + error.message);
+            }
+        });
+    });
+
+    // Сохранение всех настроек
+    window.saveAllSettings = async function() {
+        const inputs = document.querySelectorAll('.setting-value');
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const input of inputs) {
+            const key = input.dataset.key;
+            const value = input.value.trim();
+
+            if (!value) {
+                errorCount++;
+                continue;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('value', value);
+
+                const response = await fetch(`/api/settings/${key}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (error) {
+                errorCount++;
+            }
+        }
+
+        if (errorCount === 0) {
+            showAlert('success', `Все настройки сохранены успешно! (${successCount} параметров)`);
+        } else if (successCount > 0) {
+            showAlert('warning', `Сохранено ${successCount} параметров, ${errorCount} ошибок`);
+        } else {
+            showAlert('danger', 'Не удалось сохранить настройки');
+        }
+    };
+
+    function showAlert(type, message) {
+        const alertDiv = document.getElementById('statusAlert');
+        const messageSpan = document.getElementById('statusMessage');
+
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        messageSpan.textContent = message;
+        alertDiv.style.display = 'block';
+
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.style.display = 'none', 150);
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

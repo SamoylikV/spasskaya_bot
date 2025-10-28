@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TOKEN, DB_URL
-from db.db import create_appeal, add_message, init_db, get_notification_recipients, get_message_template, init_message_templates
+from db.db import create_appeal, add_message, init_db, get_notification_recipients, get_message_template, init_message_templates, get_current_time_in_timezone, format_time_for_display
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -189,7 +189,48 @@ async def help_cmd(message: Message):
     await message.answer(help_text, parse_mode="HTML")
 
 
-async def send_new_appeal_notification(appeal_id, room, service_type, description):
+async def send_user_message_notification(appeal_id, username, room, message):
+    try:
+        recipients = await get_notification_recipients(active_only=True)
+
+        current_time = get_current_time_in_timezone()
+        time_str = format_time_for_display(current_time)
+
+        notification_template = await get_message_template('user_message_notification')
+        if notification_template:
+            notification_text = notification_template.format(
+                username=username or 'пользователь',
+                room=room,
+                message=message[:100] + ('...' if len(message) > 100 else ''),
+                appeal_id=appeal_id,
+                time=time_str
+            )
+        else:
+            notification_text = f"""💬 <b>Новое сообщение от пользователя</b>
+
+👤 Пользователь: @{username or 'пользователь'} (комната {room})
+📝 Сообщение: {message[:100]}{'...' if len(message) > 100 else ''}
+
+🔔 Обращение #{appeal_id}
+
+🕗 Время: {time_str}"""
+
+        for recipient in recipients:
+            try:
+                await bot.send_message(
+                    chat_id=recipient['chat_id'],
+                    text=notification_text,
+                    parse_mode="HTML",
+                    disable_notification=False
+                )
+                logger.info(f"User message notification sent to {recipient['chat_id']} for appeal #{appeal_id}")
+            except Exception as e:
+                logger.error(f"Failed to send user message notification to {recipient['chat_id']}: {e}")
+    except Exception as e:
+        logger.error(f"Error in send_user_message_notification: {e}")
+
+
+async def send_new_appeal_notification(appeal_id, room, service_type, description, comment=None):
     try:
         recipients = await get_notification_recipients(active_only=True)
 
@@ -207,6 +248,9 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
 
         service_name = service_type_names.get(service_type, service_type)
 
+        current_time = get_current_time_in_timezone()
+        time_str = format_time_for_display(current_time)
+
         notification_template = await get_message_template('new_appeal_notification')
         if notification_template:
             notification_text = notification_template.format(
@@ -214,7 +258,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
                 room=room,
                 service_name=service_name,
                 description=description,
-                time=datetime.now().strftime('%d.%m.%Y %H:%M')
+                time=time_str
             )
         else:
             notification_text = f"""🔔 <b>Новая заявка #{appeal_id}</b>
@@ -222,8 +266,12 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
 🛏️ Комната: <b>{room}</b>
 📋 Тип: {service_name}
 ✉️ Описание: {description}
+"""
 
-🕗 Время: {datetime.now().strftime('%d.%m.%Y %H:%M')}"""
+        if comment:
+            notification_text += f"💬 Комментарий: {comment}\n"
+
+        notification_text += f"\n🕗 Время: {time_str}"
 
         for recipient in recipients:
             try:
@@ -250,8 +298,8 @@ async def create_service_request(user_id, username, room, service_type, descript
         await add_message(appeal_id, "user", description)
         if optional_comment:
             await add_message(appeal_id, "user", f"Комментарий: {optional_comment}")
-        
-        await send_new_appeal_notification(appeal_id, room, service_type, description)
+
+        await send_new_appeal_notification(appeal_id, room, service_type, description, optional_comment)
     finally:
         await conn.close()
     return appeal_id
@@ -573,6 +621,8 @@ async def user_reply_text(message: Message, state: FSMContext):
 
             logger.info(f"New user reply on appeal {appeal_id}: {text}")
             logger.info(f"Appeal {appeal_id} status updated to 'new' due to user reply")
+
+            await send_user_message_notification(appeal_id, appeal['username'], appeal['room'], text)
     finally:
         await conn.close()
 
@@ -677,6 +727,7 @@ async def main():
     logger.info("Инициализация БД...")
     await init_db()
     await init_message_templates()
+    await init_settings()
 
     conn = await asyncpg.connect(DB_URL)
     try:

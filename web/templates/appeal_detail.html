@@ -37,7 +37,6 @@
     </div>
 </div>
 
-<!-- Appeal Info Card -->
 <div class="row mb-4">
     <div class="col-lg-8">
         <div class="card shadow-sm">
@@ -49,7 +48,7 @@
                     </h5>
                     <span class="text-muted">
                         <i class="fas fa-clock me-1"></i>
-                        {{ appeal.created_at.strftime('%d.%m.%Y %H:%M') }}
+                        {{ appeal.created_at.strftime('%d.%m.%Y %H:%M') if appeal.created_at else '—' }}
                     </span>
                 </div>
             </div>
@@ -160,6 +159,19 @@
                     <i class="fas fa-reply me-2"></i>
                     Ответить пользователю
                 </button>
+
+                <hr>
+
+                <div class="mb-2">
+                    <small class="text-muted">Быстрые ответы:</small>
+                </div>
+                <div class="d-grid gap-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm quick-reply-btn"
+                            data-reply-type="{{ appeal.request_type }}">
+                        <i class="fas fa-magic me-1"></i>
+                        Стандартный ответ
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -203,7 +215,7 @@
                                         </strong>
                                         <small class="text-muted">
                                             <i class="fas fa-clock me-1"></i>
-                                            {{ message.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                            {{ message.created_at.strftime('%d.%m.%Y %H:%M') if message.created_at else '—' }}
                                         </small>
                                     </div>
                                     <p class="mb-0">{{ message.text }}</p>
@@ -316,32 +328,32 @@ document.addEventListener('DOMContentLoaded', function() {
     if (replyForm) {
         replyForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(this);
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-            
+
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Отправка...';
-            
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const result = await response.json();
                 console.log('Reply response:', result);
-                
+
                 if (result.success) {
                     showDetailToast('✉️ Сообщение отправлено пользователю!', 'success');
-                    
+
                     this.reset();
                     const modal = bootstrap.Modal.getInstance(document.getElementById('replyModal'));
                     if (modal) {
                         modal.hide();
                     }
-                    
+
                     setTimeout(() => {
                         location.reload();
                     }, 1500);
@@ -357,6 +369,41 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Quick reply functionality
+    document.querySelectorAll('.quick-reply-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const replyType = this.dataset.replyType;
+            const buttonText = this.innerHTML;
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Загрузка...';
+
+            try {
+                const response = await fetch(`/api/messages/quick-reply/${replyType}`);
+                const data = await response.json();
+
+                if (data.text) {
+                    const replyTextarea = document.getElementById('replyMessage');
+                    replyTextarea.value = data.text;
+
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('replyModal'));
+                    modal.show();
+
+                    showDetailToast('📝 Шаблон ответа загружен!', 'info');
+                } else {
+                    showDetailToast('❌ Шаблон ответа не найден', 'warning');
+                }
+            } catch (error) {
+                console.error('Quick reply error:', error);
+                showDetailToast('❌ Ошибка при загрузке шаблона', 'danger');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = buttonText;
+            }
+        });
+    });
     
 
 });

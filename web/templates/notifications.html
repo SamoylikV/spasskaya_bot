@@ -63,7 +63,7 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ recipient.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                                    <td>{{ recipient.created_at.strftime('%d.%m.%Y %H:%M') if recipient.created_at else '—' }}</td>
                                     <td>
                                         <div class="btn-group" role="group">
                                             <button type="button" 
@@ -98,7 +98,6 @@
     </div>
 </div>
 
-<!-- Modal для добавления получателя -->
 <div class="modal fade" id="addRecipientModal" tabindex="-1" aria-labelledby="addRecipientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

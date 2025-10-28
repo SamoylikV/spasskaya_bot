@@ -202,7 +202,7 @@
                                         {{ appeal.status }}
                                     </span>
                                 </td>
-                                <td>{{ appeal.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                                <td>{{ appeal.created_at.strftime('%d.%m.%Y %H:%M') if appeal.created_at else '—' }}</td>
                                 <td>
                                     <a href="/appeals/{{ appeal.id }}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i>
