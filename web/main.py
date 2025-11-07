@@ -21,7 +21,7 @@ from db.db import (
     remove_notification_recipient, toggle_notification_recipient,
     get_message_template, get_all_message_templates, update_message_template,
     get_setting, update_setting, get_all_settings, init_settings,
-    format_time_for_display
+    format_time_for_display, add_room, remove_room, get_all_rooms
 )
 
 app = FastAPI(title="Spasskaya Hotel Admin Panel", version="3.1")
@@ -460,6 +460,97 @@ async def update_setting_endpoint(setting_key: str, request: Request, admin: str
         return {"success": True, "key": setting_key}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating setting: {str(e)}")
+
+@app.get("/rooms", response_class=HTMLResponse)
+async def rooms_page(request: Request, admin: str = Depends(get_current_admin)):
+    rooms = await get_all_rooms(active_only=False)
+    return templates.TemplateResponse("rooms.html", {
+        "request": request,
+        "rooms": rooms
+    })
+
+@app.get("/api/rooms")
+async def get_rooms(admin: str = Depends(get_current_admin)):
+    rooms = await get_all_rooms(active_only=False)
+    return {"rooms": [dict(r) for r in rooms]}
+
+@app.post("/api/rooms")
+async def add_room_endpoint(request: Request, admin: str = Depends(get_current_admin)):
+    try:
+        form = await request.form()
+        room_number = form.get("room_number")
+        description = form.get("description")
+
+        if not room_number:
+            raise HTTPException(status_code=400, detail="Room number is required")
+
+        await add_room(room_number, description)
+        return {"success": True, "room_number": room_number}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding room: {str(e)}")
+
+@app.delete("/api/rooms/{room_number}")
+async def delete_room_endpoint(room_number: str, admin: str = Depends(get_current_admin)):
+    try:
+        await remove_room(room_number)
+        return {"success": True, "room_number": room_number}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error removing room: {str(e)}")
+
+@app.get("/api/rooms/{room_number}/qr")
+async def generate_qr_code(room_number: str, admin: str = Depends(get_current_admin)):
+    try:
+        import os
+        import qrcode
+        import io
+        import requests
+        from fastapi import HTTPException
+        from fastapi.responses import StreamingResponse
+
+        bot_token = os.getenv('TOKEN')
+        if not bot_token:
+            raise HTTPException(status_code=500, detail="Bot token not configured")
+
+        resp = requests.get(f"https://api.telegram.org/bot{bot_token}/getMe")
+        if resp.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to fetch bot info from Telegram")
+
+        data = resp.json()
+        if not data.get("ok"):
+            raise HTTPException(status_code=500, detail=f"Telegram API error: {data}")
+
+        bot_username = data["result"]["username"]
+        if not bot_username:
+            raise HTTPException(status_code=500, detail="Bot username not found")
+
+        qr_url = f"https://t.me/{bot_username}?start={room_number}"
+
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECTION_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(qr_url)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+
+        return StreamingResponse(
+            img_bytes,
+            media_type="image/png",
+            headers={"Content-Disposition": f"attachment; filename=room_{room_number}_qr.png"}
+        )
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="QR code generation not available. Install qrcode package.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating QR code: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn

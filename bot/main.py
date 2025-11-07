@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TOKEN, DB_URL
-from db.db import create_appeal, add_message, init_db, get_notification_recipients, get_message_template, init_message_templates, get_current_time_in_timezone, format_time_for_display, init_settings
+from db.db import create_appeal, add_message, init_db, get_notification_recipients, get_message_template, init_message_templates, get_current_time_in_timezone, format_time_for_display, init_settings, get_setting, is_valid_room
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,6 +62,12 @@ async def show_service_menu(message: Message, state: FSMContext):
 async def start(message: Message, command: CommandObject, state: FSMContext):
     args = command.args
     if args and args.isdigit():
+        if not await is_valid_room(args):
+            await send_welcome_with_photo(message)
+            await message.answer("❌ Номер комнаты не найден в системе. Пожалуйста, введите корректный номер комнаты.")
+            await state.set_state(RoomInput.waiting_room)
+            return
+
         await state.update_data(room=args)
         await send_welcome_with_photo(message)
         await show_service_menu(message, state)
@@ -147,6 +153,11 @@ async def get_room(message: Message, state: FSMContext):
     if not message.text or not message.text.isdigit():
         await message.answer(invalid_room_msg or "❌ Номер комнаты должен быть. Попробуйте ещё раз или отправьте /cancel.")
         return
+
+    if not await is_valid_room(message.text):
+        await message.answer("❌ Номер комнаты не найден в системе. Пожалуйста, проверьте номер и попробуйте ещё раз.")
+        return
+
     await state.update_data(room=message.text)
     await message.answer((room_confirmed_msg or "✅ Номер комнаты: {room}").format(room=message.text))
     await show_service_menu(message, state)
@@ -251,6 +262,8 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
         current_time = get_current_time_in_timezone()
         time_str = format_time_for_display(current_time)
 
+        admin_panel_url = await get_setting('admin_panel_url') or 'http://localhost:8001'
+
         notification_template = await get_message_template('new_appeal_notification')
         if notification_template:
             notification_text = notification_template.format(
@@ -258,7 +271,8 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
                 room=room,
                 service_name=service_name,
                 description=description,
-                time=time_str
+                time=time_str,
+                admin_url=admin_panel_url
             )
         else:
             notification_text = f"""🔔 <b>Новая заявка #{appeal_id}</b>
@@ -272,6 +286,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
             notification_text += f"💬 Комментарий: {comment}\n"
 
         notification_text += f"\n🕗 Время: {time_str}"
+        notification_text += f"\n🔗 <a href=\"{admin_panel_url}/appeals/{appeal_id}\">Открыть в админ-панели</a>"
 
         for recipient in recipients:
             try:

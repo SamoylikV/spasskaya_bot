@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Управление номерами - Spasskaya Hotel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-door-open"></i> Управление номерами</h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+                <i class="fas fa-plus"></i> Добавить номер
+            </button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Список номеров</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="roomsTable">
+                        <thead>
+                            <tr>
+                                <th>Номер комнаты</th>
+                                <th>Описание</th>
+                                <th>Статус</th>
+                                <th>Дата создания</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for room in rooms %}
+                            <tr data-room-number="{{ room.room_number }}">
+                                <td>{{ room.room_number }}</td>
+                                <td>{{ room.description or '-' }}</td>
+                                <td>
+                                    {% if room.is_active %}
+                                        <span class="badge bg-success">Активен</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Неактивен</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ room.created_at.strftime('%d.%m.%Y %H:%M') if room.created_at else '-' }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-sm btn-outline-primary generate-qr-btn" data-room="{{ room.room_number }}">
+                                            <i class="fas fa-qrcode"></i> QR
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-room-btn" data-room="{{ room.room_number }}">
+                                            <i class="fas fa-trash"></i> Удалить
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Room Modal -->
+<div class="modal fade" id="addRoomModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить номер</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addRoomForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="roomNumber" class="form-label">Номер комнаты *</label>
+                        <input type="text" class="form-control" id="roomNumber" name="room_number" required>
+                        <div class="form-text">Введите номер комнаты (например: 101, 202)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="roomDescription" class="form-label">Описание</label>
+                        <input type="text" class="form-control" id="roomDescription" name="description" placeholder="Опциональное описание номера">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrCodeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">QR код для номера <span id="qrRoomNumber"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qrCodeContainer">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Генерация QR кода...</span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        QR код содержит ссылку на Telegram бота с автоматическим вводом номера комнаты
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <a id="downloadQrBtn" href="#" class="btn btn-primary" download>
+                    <i class="fas fa-download"></i> Скачать PNG
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addRoomForm = document.getElementById('addRoomForm');
+    const roomsTable = document.getElementById('roomsTable');
+
+    // Add room form submission
+    addRoomForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const roomNumber = formData.get('room_number');
+        const description = formData.get('description');
+
+        try {
+            const response = await fetch('/api/rooms', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                showStatus('Номер успешно добавлен!', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('addRoomModal')).hide();
+                addRoomForm.reset();
+                location.reload(); // Refresh to show new room
+            } else {
+                const error = await response.json();
+                showStatus('Ошибка: ' + error.detail, 'danger');
+            }
+        } catch (error) {
+            showStatus('Ошибка при добавлении номера', 'danger');
+        }
+    });
+
+    // Delete room buttons
+    roomsTable.addEventListener('click', async function(e) {
+        if (e.target.closest('.delete-room-btn')) {
+            const btn = e.target.closest('.delete-room-btn');
+            const roomNumber = btn.dataset.room;
+
+            if (confirm(`Удалить номер ${roomNumber}?`)) {
+                try {
+                    const response = await fetch(`/api/rooms/${roomNumber}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        showStatus('Номер успешно удален!', 'success');
+                        btn.closest('tr').remove();
+                    } else {
+                        const error = await response.json();
+                        showStatus('Ошибка: ' + error.detail, 'danger');
+                    }
+                } catch (error) {
+                    showStatus('Ошибка при удалении номера', 'danger');
+                }
+            }
+        }
+    });
+
+    // Generate QR code buttons
+    roomsTable.addEventListener('click', async function(e) {
+        if (e.target.closest('.generate-qr-btn')) {
+            const btn = e.target.closest('.generate-qr-btn');
+            const roomNumber = btn.dataset.room;
+
+            document.getElementById('qrRoomNumber').textContent = roomNumber;
+            const qrContainer = document.getElementById('qrCodeContainer');
+            const downloadBtn = document.getElementById('downloadQrBtn');
+
+            qrContainer.innerHTML = '<div class="spinner-border" role="status"><span class="visually-hidden">Генерация QR кода...</span></div>';
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('qrCodeModal')).show();
+
+            try {
+                const response = await fetch(`/api/rooms/${roomNumber}/qr`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+
+                    qrContainer.innerHTML = `<img src="${imageUrl}" class="img-fluid" alt="QR код для номера ${roomNumber}">`;
+                    downloadBtn.href = imageUrl;
+                    downloadBtn.download = `room_${roomNumber}_qr.png`;
+                } else {
+                    qrContainer.innerHTML = '<div class="alert alert-danger">Ошибка при генерации QR кода</div>';
+                }
+            } catch (error) {
+                qrContainer.innerHTML = '<div class="alert alert-danger">Ошибка при генерации QR кода</div>';
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

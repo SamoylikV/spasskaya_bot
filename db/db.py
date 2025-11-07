@@ -101,6 +101,17 @@ async def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
+
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS rooms (
+            id SERIAL PRIMARY KEY,
+            room_number TEXT UNIQUE NOT NULL,
+            is_active BOOLEAN DEFAULT true,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_status ON appeals(status);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_room ON appeals(room);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_appeals_created_at ON appeals(created_at);")
@@ -445,11 +456,11 @@ async def toggle_notification_recipient(chat_id, is_active):
 
 
 async def init_settings():
-    """Initialize default settings"""
     conn = await asyncpg.connect(DB_URL)
     try:
         settings = [
             ('timezone', 'Europe/Moscow', 'Часовой пояс для отображения времени'),
+            ('admin_panel_url', 'http://localhost:8001', 'URL админ-панели для ссылок в уведомлениях'),
         ]
 
         for key, value, description in settings:
@@ -464,7 +475,6 @@ async def init_settings():
 
 
 async def get_setting(key):
-    """Get setting value by key"""
     conn = await asyncpg.connect(DB_URL)
     try:
         row = await conn.fetchrow("SELECT value FROM settings WHERE key=$1", key)
@@ -474,7 +484,6 @@ async def get_setting(key):
 
 
 async def update_setting(key, value):
-    """Update setting value"""
     conn = await asyncpg.connect(DB_URL)
     try:
         await conn.execute("""
@@ -487,7 +496,6 @@ async def update_setting(key, value):
 
 
 async def get_all_settings():
-    """Get all settings"""
     conn = await asyncpg.connect(DB_URL)
     try:
         rows = await conn.fetch("SELECT * FROM settings ORDER BY key")
@@ -723,3 +731,43 @@ async def update_message_template(key, text):
         """, text, key)
     finally:
         await conn.close()
+
+
+async def add_room(room_number, description=None):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute(
+            "INSERT INTO rooms (room_number, description) VALUES ($1, $2) ON CONFLICT (room_number) DO UPDATE SET description=$2, is_active=true",
+            room_number, description
+        )
+    finally:
+        await conn.close()
+
+
+async def remove_room(room_number):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute("UPDATE rooms SET is_active=false WHERE room_number=$1", room_number)
+    finally:
+        await conn.close()
+
+
+async def get_all_rooms(active_only=True):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        if active_only:
+            rows = await conn.fetch("SELECT * FROM rooms WHERE is_active=true ORDER BY room_number")
+        else:
+            rows = await conn.fetch("SELECT * FROM rooms ORDER BY room_number")
+    finally:
+        await conn.close()
+    return rows
+
+
+async def is_valid_room(room_number):
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        row = await conn.fetchrow("SELECT id FROM rooms WHERE room_number=$1 AND is_active=true", room_number)
+    finally:
+        await conn.close()
+    return row is not None
