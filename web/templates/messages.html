@@ -84,7 +84,6 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Сохранение отдельного шаблона
     document.querySelectorAll('.save-template').forEach(button => {
         button.addEventListener('click', async function() {
             const key = this.dataset.key;
@@ -119,7 +118,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Сохранение всех изменений
     window.saveAllChanges = async function() {
         const textareas = document.querySelectorAll('.message-text');
         let successCount = 0;

@@ -442,6 +442,12 @@ async def settings_page(request: Request, admin: str = Depends(get_current_admin
         "settings": settings_data
     })
 
+@app.get("/guide", response_class=HTMLResponse)
+async def guide_page(request: Request, admin: str = Depends(get_current_admin)):
+    return templates.TemplateResponse("guide.html", {
+        "request": request
+    })
+
 @app.get("/api/settings")
 async def get_settings(admin: str = Depends(get_current_admin)):
     settings_data = await get_all_settings()
@@ -553,20 +559,37 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
         text = qr_setting.replace('{room_number}', room_number)
         
         width, height = img.size
-        new_height = height + 80
+        new_height = height + 120
         new_img = Image.new('RGB', (width, new_height), 'white')
         new_img.paste(img, (0, 0))
         
         draw = ImageDraw.Draw(new_img)
-        try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-        except:
+        font_loaded = False
+        font_size = 48
+        
+        # Try multiple font paths for better Russian character support
+        font_paths = [
+            "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux
+        ]
+        
+        for font_path in font_paths:
+            try:
+                font = ImageFont.truetype(font_path, font_size)
+                font_loaded = True
+                break
+            except:
+                continue
+        
+        if not font_loaded:
             font = ImageFont.load_default()
         
         bbox = draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
         text_x = (width - text_width) // 2
-        text_y = height + 20
+        text_y = height + 30
         
         draw.text((text_x, text_y), text, fill='black', font=font)
 
@@ -627,20 +650,37 @@ async def download_all_qr_codes(admin: str = Depends(get_current_admin)):
                 text = qr_setting.replace('{room_number}', room_number)
                 
                 width, height = img.size
-                new_height = height + 80
+                new_height = height + 120
                 new_img = Image.new('RGB', (width, new_height), 'white')
                 new_img.paste(img, (0, 0))
                 
                 draw = ImageDraw.Draw(new_img)
-                try:
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-                except:
+                font_loaded = False
+                font_size = 48
+                
+                # Try multiple font paths for better Russian character support
+                font_paths = [
+                    "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux
+                    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux
+                ]
+                
+                for font_path in font_paths:
+                    try:
+                        font = ImageFont.truetype(font_path, font_size)
+                        font_loaded = True
+                        break
+                    except:
+                        continue
+                
+                if not font_loaded:
                     font = ImageFont.load_default()
                 
                 bbox = draw.textbbox((0, 0), text, font=font)
                 text_width = bbox[2] - bbox[0]
                 text_x = (width - text_width) // 2
-                text_y = height + 20
+                text_y = height + 30
                 
                 draw.text((text_x, text_y), text, fill='black', font=font)
                 

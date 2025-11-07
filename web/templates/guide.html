@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block title %}Инструкции - Spasskaya Hotel Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-4"><i class="fas fa-book"></i> Инструкция по использованию системы</h1>
+        <p class="text-muted">Подробное руководство по работе с системой управления отеля</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-3 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="fas fa-list"></i> Содержание</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <a href="#overview" class="list-group-item list-group-item-action">Обзор системы</a>
+                    <a href="#dashboard" class="list-group-item list-group-item-action">Dashboard</a>
+                    <a href="#appeals" class="list-group-item list-group-item-action">Обращения</a>
+                    <a href="#rooms" class="list-group-item list-group-item-action">Управление номерами</a>
+                    <a href="#qr-codes" class="list-group-item list-group-item-action">QR коды</a>
+                    <a href="#notifications" class="list-group-item list-group-item-action">Уведомления</a>
+                    <a href="#messages" class="list-group-item list-group-item-action">Шаблоны сообщений</a>
+                    <a href="#settings" class="list-group-item list-group-item-action">Настройки</a>
+                    <a href="#analytics" class="list-group-item list-group-item-action">Аналитика</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9">
+        <section id="overview" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="fas fa-info-circle"></i> Обзор системы</h4>
+                </div>
+                <div class="card-body">
+                    <p>Система управления отелем Spasskaya включает в себя:</p>
+                    <ul>
+                        <li><strong>Telegram бот</strong> для гостей отеля</li>
+                        <li><strong>Веб-панель администратора</strong> для управления обращениями</li>
+                        <li><strong>QR коды</strong> для быстрого доступа к боту из номеров</li>
+                        <li><strong>Систему уведомлений</strong> в Telegram для персонала</li>
+                    </ul>
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb"></i> <strong>Совет:</strong> Используйте горячие клавиши и фильтры для быстрой навигации по системе.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-tachometer-alt"></i> Dashboard</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Главная страница</h5>
+                    <p>На главной странице отображается:</p>
+                    <ul>
+                        <li><strong>Статистика обращений</strong> по статусам (новые, в работе, выполненные, отклоненные)</li>
+                        <li><strong>Последние обращения</strong> (10 самых свежих)</li>
+                        <li><strong>Быстрые действия</strong> для перехода к фильтрам</li>
+                    </ul>
+                    <p>Кликните на карточку со статистикой, чтобы перейти к отфильтрованному списку обращений.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="appeals" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-envelope"></i> Работа с обращениями</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Список обращений</h5>
+                    <p>На странице обращений вы можете:</p>
+                    <ul>
+                        <li>Просматривать все обращения от гостей</li>
+                        <li>Фильтровать по статусу, номеру комнаты, типу обращения</li>
+                        <li>Искать по тексту или имени пользователя</li>
+                        <li>Быстро изменять статус обращения</li>
+                    </ul>
+
+                    <h5 class="mt-4">Статусы обращений</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded mb-2">
+                                <span class="badge bg-warning">Новое</span>
+                                <p class="mb-0 mt-2 small">Только что поступившее обращение, требует внимания</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded mb-2">
+                                <span class="badge bg-info">В работе</span>
+                                <p class="mb-0 mt-2 small">Обращение принято к исполнению</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded mb-2">
+                                <span class="badge bg-success">Выполнено</span>
+                                <p class="mb-0 mt-2 small">Обращение выполнено, гость уведомлен</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded mb-2">
+                                <span class="badge bg-danger">Отклонено</span>
+                                <p class="mb-0 mt-2 small">Обращение отклонено с пояснением причины</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4">Детали обращения</h5>
+                    <p>Кликните на обращение для просмотра деталей:</p>
+                    <ul>
+                        <li><strong>Информация о госте:</strong> номер комнаты, username, время обращения</li>
+                        <li><strong>История переписки</strong> с гостем</li>
+                        <li><strong>Быстрые действия:</strong> изменение статуса, ответ гостю</li>
+                        <li><strong>Шаблоны ответов</strong> для типовых ситуаций</li>
+                    </ul>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Важно:</strong> После изменения статуса гость автоматически получает уведомление в Telegram.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="rooms" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="fas fa-door-open"></i> Управление номерами</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Добавление номеров</h5>
+                    <p>Вы можете добавлять номера двумя способами:</p>
+                    <ol>
+                        <li><strong>Одиночное добавление:</strong> введите номер комнаты (например: 101)</li>
+                        <li><strong>Массовое добавление:</strong> используйте диапазон (например: 201-240)</li>
+                    </ol>
+                    <p>При массовом добавлении система автоматически создаст все номера в указанном диапазоне.</p>
+
+                    <h5 class="mt-4">Удаление номеров</h5>
+                    <p>Для удаления номера нажмите кнопку "Удалить" рядом с нужным номером. Система попросит подтверждение.</p>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb"></i> <strong>Совет:</strong> Добавьте описание к номеру для дополнительной информации (например, тип номера или этаж).
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="qr-codes" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0"><i class="fas fa-qrcode"></i> QR коды</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Генерация QR кодов</h5>
+                    <p>QR коды позволяют гостям быстро начать работу с ботом, просто отсканировав код в номере.</p>
+
+                    <h6 class="mt-3">Создание отдельного QR кода:</h6>
+                    <ol>
+                        <li>Перейдите на страницу "Номера"</li>
+                        <li>Нажмите кнопку "QR" рядом с нужным номером</li>
+                        <li>QR код сгенерируется автоматически</li>
+                        <li>Нажмите "Скачать PNG" для сохранения</li>
+                    </ol>
+
+                    <h6 class="mt-3">Массовая загрузка QR кодов:</h6>
+                    <ol>
+                        <li>На странице "Номера" нажмите кнопку "Скачать все QR коды"</li>
+                        <li>Система сгенерирует ZIP архив со всеми QR кодами</li>
+                        <li>Архив автоматически загрузится на ваш компьютер</li>
+                    </ol>
+
+                    <h6 class="mt-3">Настройка текста на QR коде:</h6>
+                    <p>В разделе "Настройки" найдите параметр <code>qr_code_text</code>:</p>
+                    <ul>
+                        <li>Введите желаемый текст</li>
+                        <li>Используйте <code>{room_number}</code> для автоматической подстановки номера комнаты</li>
+                        <li>Пример: "Бот поддержки номера {room_number}"</li>
+                    </ul>
+
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> <strong>Готово:</strong> QR коды содержат прямую ссылку на бота с автоматическим вводом номера комнаты.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="notifications" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="fas fa-bell"></i> Система уведомлений</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Настройка получателей</h5>
+                    <p>Добавьте сотрудников, которые должны получать уведомления о новых обращениях:</p>
+                    <ol>
+                        <li>Перейдите в раздел "Уведомления"</li>
+                        <li>Нажмите "Добавить получателя"</li>
+                        <li>Введите Telegram Chat ID сотрудника</li>
+                        <li>Опционально укажите username для удобства</li>
+                    </ol>
+
+                    <h6 class="mt-3">Как узнать Chat ID?</h6>
+                    <p>Попросите сотрудника:</p>
+                    <ol>
+                        <li>Написать боту <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></li>
+                        <li>Скопировать полученный ID</li>
+                        <li>Передать вам этот ID</li>
+                    </ol>
+
+                    <h6 class="mt-3">Управление получателями:</h6>
+                    <ul>
+                        <li><strong>Активация/Деактивация:</strong> Переключайте статус получателя без удаления</li>
+                        <li><strong>Удаление:</strong> Полностью удалите получателя из системы</li>
+                    </ul>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> <strong>Примечание:</strong> Уведомления отправляются только активным получателям при создании нового обращения.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="messages" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="fas fa-comments"></i> Шаблоны сообщений</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Редактирование текстов</h5>
+                    <p>В разделе "Сообщения" вы можете настроить все тексты, которые использует бот:</p>
+                    <ul>
+                        <li><strong>Приветственное сообщение</strong> при запуске бота</li>
+                        <li><strong>Тексты кнопок и меню</strong></li>
+                        <li><strong>Уведомления о статусах</strong></li>
+                        <li><strong>Системные сообщения</strong></li>
+                    </ul>
+
+                    <h6 class="mt-3">Плейсхолдеры:</h6>
+                    <p>В шаблонах можно использовать специальные плейсхолдеры:</p>
+                    <ul>
+                        <li><code>{room}</code> - номер комнаты</li>
+                        <li><code>{room_number}</code> - номер комнаты</li>
+                        <li><code>{appeal_id}</code> - ID обращения</li>
+                    </ul>
+
+                    <h6 class="mt-3">Сохранение изменений:</h6>
+                    <ul>
+                        <li><strong>Одиночное сохранение:</strong> кнопка "Сохранить" рядом с каждым шаблоном</li>
+                        <li><strong>Массовое сохранение:</strong> кнопка "Сохранить все изменения" вверху страницы</li>
+                    </ul>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Внимание:</strong> Изменения вступают в силу сразу после сохранения.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="settings" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0"><i class="fas fa-cog"></i> Настройки системы</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Основные параметры</h5>
+                    
+                    <h6 class="mt-3">Timezone (Часовой пояс):</h6>
+                    <p>Выберите часовой пояс для корректного отображения времени во всей системе. Доступны основные часовые пояса России.</p>
+
+                    <h6 class="mt-3">Admin Panel URL:</h6>
+                    <p>URL админ-панели используется в уведомлениях для быстрого перехода к обращениям. Убедитесь, что указан правильный адрес.</p>
+
+                    <h6 class="mt-3">QR Code Text:</h6>
+                    <p>Текст, который отображается под QR кодом. Используйте <code>{room_number}</code> для подстановки номера комнаты.</p>
+
+                    <div class="alert alert-success">
+                        <i class="fas fa-save"></i> <strong>Автосохранение:</strong> Все изменения сохраняются сразу после нажатия кнопки "Сохранить".
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="analytics" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-chart-line"></i> Аналитика</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Статистика и отчеты</h5>
+                    <p>В разделе "Аналитика" доступна детальная статистика:</p>
+                    <ul>
+                        <li><strong>Обращения по статусам</strong> (круговая диаграмма)</li>
+                        <li><strong>Динамика обращений</strong> по дням (линейный график)</li>
+                        <li><strong>Топ номеров</strong> по количеству обращений</li>
+                        <li><strong>Типы обращений</strong> (гистограмма)</li>
+                    </ul>
+
+                    <h6 class="mt-3">Фильтрация данных:</h6>
+                    <p>Используйте фильтры для анализа данных за конкретный период или по определенным критериям.</p>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb"></i> <strong>Совет:</strong> Регулярно проверяйте аналитику для выявления проблемных номеров или частых типов обращений.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tips" class="mb-5">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-lightbulb"></i> Полезные советы</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-bolt text-warning"></i> Быстрые действия</h6>
+                            <ul class="small">
+                                <li>Используйте фильтры на странице обращений</li>
+                                <li>Кликайте на статистику для перехода к отфильтрованным данным</li>
+                                <li>Используйте шаблоны ответов для типовых ситуаций</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-users text-primary"></i> Работа с гостями</h6>
+                            <ul class="small">
+                                <li>Отвечайте на обращения в течение 15 минут</li>
+                                <li>Используйте персонализированные ответы</li>
+                                <li>Всегда меняйте статус после выполнения</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-shield-alt text-danger"></i> Безопасность</h6>
+                            <ul class="small">
+                                <li>Не сообщайте пароль от панели третьим лицам</li>
+                                <li>Выходите из системы после завершения работы</li>
+                                <li>Регулярно проверяйте список получателей уведомлений</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-tools text-info"></i> Техническое обслуживание</h6>
+                            <ul class="small">
+                                <li>Периодически проверяйте настройки системы</li>
+                                <li>Обновляйте тексты сообщений при необходимости</li>
+                                <li>Следите за актуальностью списка номеров</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="support" class="mb-5">
+            <div class="card border-primary">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0"><i class="fas fa-question-circle text-primary"></i> Нужна помощь?</h4>
+                </div>
+                <div class="card-body">
+                    <p>Если у вас возникли вопросы по работе системы или вы обнаружили проблему:</p>
+                    <div class="alert alert-light border">
+                        <p class="mb-2"><strong>Свяжитесь с технической поддержкой:</strong></p>
+                        <p class="mb-0">
+                            <i class="fas fa-envelope"></i> Email: support@hotel-spasskaya.ru<br>
+                            <i class="fas fa-phone"></i> Телефон: +7 (XXX) XXX-XX-XX
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

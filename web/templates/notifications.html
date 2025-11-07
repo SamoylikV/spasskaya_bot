@@ -148,7 +148,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const addRecipientModal = new bootstrap.Modal(document.getElementById('addRecipientModal'));
     
-    // Добавление получателя
     document.getElementById('saveRecipientBtn').addEventListener('click', async function() {
         const form = document.getElementById('addRecipientForm');
         const formData = new FormData(form);
@@ -170,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showAlert('success', 'Получатель успешно добавлен!');
                 addRecipientModal.hide();
                 form.reset();
-                setTimeout(() => location.reload(), 1000);
+                setTimeout(() => location.reload(), 500);
             } else {
                 showAlert('danger', 'Ошибка при добавлении получателя: ' + (data.detail || 'неизвестная ошибка'));
             }
@@ -179,7 +178,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Переключение статуса
     document.querySelectorAll('.toggle-recipient').forEach(button => {
         button.addEventListener('click', async function() {
             const chatId = this.dataset.chatId;
@@ -199,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (data.success) {
                     showAlert('success', `Получатель ${newStatus ? 'активирован' : 'деактивирован'}!`);
-                    setTimeout(() => location.reload(), 1000);
+                    setTimeout(() => location.reload(), 500);
                 } else {
                     showAlert('danger', 'Ошибка при изменении статуса: ' + (data.detail || 'неизвестная ошибка'));
                 }
@@ -209,7 +207,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Удаление получателя
     document.querySelectorAll('.delete-recipient').forEach(button => {
         button.addEventListener('click', async function() {
             const chatId = this.dataset.chatId;
@@ -227,7 +224,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (data.success) {
                     showAlert('success', 'Получатель успешно удален!');
-                    setTimeout(() => location.reload(), 1000);
+                    const row = button.closest('tr');
+                    row.style.transition = 'opacity 0.3s';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 300);
                 } else {
                     showAlert('danger', 'Ошибка при удалении получателя: ' + (data.detail || 'неизвестная ошибка'));
                 }

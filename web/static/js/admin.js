@@ -387,6 +387,9 @@ window.showAlert = function(message, type) {
     }
 };
 
+// Alias for showStatus to be used across all pages
+window.showStatus = window.showAlert;
+
 const API = {
     async get(url) {
         const response = await fetch(url, {

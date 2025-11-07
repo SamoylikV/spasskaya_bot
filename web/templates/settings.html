@@ -63,6 +63,13 @@
                                                 <option value="Asia/Kamchatka" {% if setting.value == 'Asia/Kamchatka' %}selected{% endif %}>Asia/Kamchatka (+12)</option>
                                                 <option value="UTC" {% if setting.value == 'UTC' %}selected{% endif %}>UTC</option>
                                             </select>
+                                        {% elif setting.key == 'qr_code_text' %}
+                                            <textarea
+                                                class="form-control setting-value"
+                                                data-key="{{ setting.key }}"
+                                                rows="2"
+                                                placeholder="Используйте {room_number} для подстановки номера комнаты">{{ setting.value }}</textarea>
+                                            <small class="text-muted">Используйте {room_number} для подстановки номера комнаты</small>
                                         {% else %}
                                             <input type="text"
                                                    class="form-control setting-value"
@@ -99,7 +106,6 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Сохранение отдельной настройки
     document.querySelectorAll('.save-setting').forEach(button => {
         button.addEventListener('click', async function() {
             const key = this.dataset.key;
@@ -134,7 +140,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Сохранение всех настроек
     window.saveAllSettings = async function() {
         const inputs = document.querySelectorAll('.setting-value');
         let successCount = 0;

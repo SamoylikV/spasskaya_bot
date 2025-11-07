@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     setTimeout(() => {
                         location.reload();
-                    }, 2000);
+                    }, 800);
                 } else {
                     throw new Error(result.message || 'Ошибка при выполнении операции');
                 }
@@ -356,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     setTimeout(() => {
                         location.reload();
-                    }, 1500);
+                    }, 600);
                 } else {
                     showDetailToast('❌ Ошибка при отправке сообщения', 'danger');
                 }
@@ -368,9 +368,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = originalText;
             }
         });
-    }
-
-    // Quick reply functionality
+    });
+    
     document.querySelectorAll('.quick-reply-btn').forEach(button => {
         button.addEventListener('click', async function() {
             const replyType = this.dataset.replyType;
@@ -387,7 +386,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const replyTextarea = document.getElementById('replyMessage');
                     replyTextarea.value = data.text;
 
-                    // Show modal
                     const modal = new bootstrap.Modal(document.getElementById('replyModal'));
                     modal.show();
 
