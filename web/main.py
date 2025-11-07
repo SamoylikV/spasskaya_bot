@@ -504,20 +504,19 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
     try:
         import qrcode
         import io
-
-        # Get bot token for QR code generation
+        import requests
         bot_token = os.getenv('TOKEN')
         if not bot_token:
             raise HTTPException(status_code=500, detail="Bot token not configured")
-
-        # Create QR code URL using bot username from token
-        bot_username = bot_token.split(':')[0]
+        
+        resp = requests.get(f"https://api.telegram.org/bot{bot_token}/getMe")
+        data = resp.json()
+        bot_username = data["result"]["username"]
         qr_url = f"https://t.me/{bot_username}?start={room_number}"
 
-        # Generate QR code
         qr = qrcode.QRCode(
             version=1,
-            error_correction=qrcode.constants.ERROR_CORRECTION_L,
+            error_correction=qrcode.ERROR_CORRECT_L,
             box_size=10,
             border=4,
         )
@@ -526,7 +525,6 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
 
         img = qr.make_image(fill_color="black", back_color="white")
 
-        # Convert to bytes
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='PNG')
         img_bytes.seek(0)

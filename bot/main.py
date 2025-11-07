@@ -287,6 +287,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
 
         notification_text += f"\n🕗 Время: {time_str}"
         notification_text += f"\n🔗 <a href=\"{admin_panel_url}/appeals/{appeal_id}\">Открыть в админ-панели</a>"
+        logger.info(f"Admin panel URL: {admin_panel_url}/appeals/{appeal_id}")
 
         for recipient in recipients:
             try:
