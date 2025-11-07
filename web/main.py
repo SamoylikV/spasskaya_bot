@@ -499,32 +499,22 @@ async def delete_room_endpoint(room_number: str, admin: str = Depends(get_curren
 
 @app.get("/api/rooms/{room_number}/qr")
 async def generate_qr_code(room_number: str, admin: str = Depends(get_current_admin)):
+    from fastapi.responses import StreamingResponse
+
     try:
-        import os
         import qrcode
         import io
-        import requests
-        from fastapi import HTTPException
-        from fastapi.responses import StreamingResponse
 
+        # Get bot token for QR code generation
         bot_token = os.getenv('TOKEN')
         if not bot_token:
             raise HTTPException(status_code=500, detail="Bot token not configured")
 
-        resp = requests.get(f"https://api.telegram.org/bot{bot_token}/getMe")
-        if resp.status_code != 200:
-            raise HTTPException(status_code=500, detail="Failed to fetch bot info from Telegram")
-
-        data = resp.json()
-        if not data.get("ok"):
-            raise HTTPException(status_code=500, detail=f"Telegram API error: {data}")
-
-        bot_username = data["result"]["username"]
-        if not bot_username:
-            raise HTTPException(status_code=500, detail="Bot username not found")
-
+        # Create QR code URL using bot username from token
+        bot_username = bot_token.split(':')[0]
         qr_url = f"https://t.me/{bot_username}?start={room_number}"
 
+        # Generate QR code
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECTION_L,
@@ -536,16 +526,12 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
 
         img = qr.make_image(fill_color="black", back_color="white")
 
+        # Convert to bytes
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='PNG')
         img_bytes.seek(0)
 
-        return StreamingResponse(
-            img_bytes,
-            media_type="image/png",
-            headers={"Content-Disposition": f"attachment; filename=room_{room_number}_qr.png"}
-        )
-
+        return StreamingResponse(img_bytes, media_type="image/png", headers={"Content-Disposition": f"attachment; filename=room_{room_number}_qr.png"})
     except ImportError:
         raise HTTPException(status_code=500, detail="QR code generation not available. Install qrcode package.")
     except Exception as e:
