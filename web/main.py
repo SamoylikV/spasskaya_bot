@@ -484,8 +484,29 @@ async def add_room_endpoint(request: Request, admin: str = Depends(get_current_a
         if not room_number:
             raise HTTPException(status_code=400, detail="Room number is required")
 
-        await add_room(room_number, description)
-        return {"success": True, "room_number": room_number}
+        if "-" in room_number:
+            try:
+                start, end = room_number.split("-")
+                start_num = int(start.strip())
+                end_num = int(end.strip())
+                
+                if start_num > end_num:
+                    raise HTTPException(status_code=400, detail="Invalid range: start must be less than end")
+                
+                added_count = 0
+                for num in range(start_num, end_num + 1):
+                    try:
+                        await add_room(str(num), description)
+                        added_count += 1
+                    except:
+                        pass
+                
+                return {"success": True, "message": f"Добавлено номеров: {added_count}"}
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid range format. Use: 201-240")
+        else:
+            await add_room(room_number, description)
+            return {"success": True, "room_number": room_number}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding room: {str(e)}")
 
@@ -505,6 +526,8 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
         import qrcode
         import io
         import requests
+        from PIL import Image, ImageDraw, ImageFont
+        
         bot_token = os.getenv('TOKEN')
         if not bot_token:
             raise HTTPException(status_code=500, detail="Bot token not configured")
@@ -524,9 +547,31 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
         qr.make(fit=True)
 
         img = qr.make_image(fill_color="black", back_color="white")
+        img = img.convert('RGB')
+        
+        qr_setting = await get_setting('qr_code_text') or f"Бот поддержки номера {room_number}"
+        text = qr_setting.replace('{room_number}', room_number)
+        
+        width, height = img.size
+        new_height = height + 80
+        new_img = Image.new('RGB', (width, new_height), 'white')
+        new_img.paste(img, (0, 0))
+        
+        draw = ImageDraw.Draw(new_img)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+        except:
+            font = ImageFont.load_default()
+        
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_x = (width - text_width) // 2
+        text_y = height + 20
+        
+        draw.text((text_x, text_y), text, fill='black', font=font)
 
         img_bytes = io.BytesIO()
-        img.save(img_bytes, format='PNG')
+        new_img.save(img_bytes, format='PNG')
         img_bytes.seek(0)
 
         return StreamingResponse(img_bytes, media_type="image/png", headers={"Content-Disposition": f"attachment; filename=room_{room_number}_qr.png"})
@@ -535,6 +580,84 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating QR code: {str(e)}")
 
+
+@app.get("/api/rooms/qr/download-all")
+async def download_all_qr_codes(admin: str = Depends(get_current_admin)):
+    from fastapi.responses import StreamingResponse
+    import zipfile
+    import io
+    import qrcode
+    import requests
+    from PIL import Image, ImageDraw, ImageFont
+    
+    try:
+        rooms = await get_all_rooms(active_only=True)
+        
+        if not rooms:
+            raise HTTPException(status_code=404, detail="No rooms found")
+        
+        bot_token = os.getenv('TOKEN')
+        if not bot_token:
+            raise HTTPException(status_code=500, detail="Bot token not configured")
+        
+        resp = requests.get(f"https://api.telegram.org/bot{bot_token}/getMe")
+        data = resp.json()
+        bot_username = data["result"]["username"]
+        
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for room in rooms:
+                room_number = room['room_number']
+                qr_url = f"https://t.me/{bot_username}?start={room_number}"
+                
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=4,
+                )
+                qr.add_data(qr_url)
+                qr.make(fit=True)
+                
+                img = qr.make_image(fill_color="black", back_color="white")
+                img = img.convert('RGB')
+                
+                qr_setting = await get_setting('qr_code_text') or f"Бот поддержки номера {room_number}"
+                text = qr_setting.replace('{room_number}', room_number)
+                
+                width, height = img.size
+                new_height = height + 80
+                new_img = Image.new('RGB', (width, new_height), 'white')
+                new_img.paste(img, (0, 0))
+                
+                draw = ImageDraw.Draw(new_img)
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+                except:
+                    font = ImageFont.load_default()
+                
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_x = (width - text_width) // 2
+                text_y = height + 20
+                
+                draw.text((text_x, text_y), text, fill='black', font=font)
+                
+                img_bytes = io.BytesIO()
+                new_img.save(img_bytes, format='PNG')
+                
+                zip_file.writestr(f"room_{room_number}_qr.png", img_bytes.getvalue())
+        
+        zip_buffer.seek(0)
+        
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=all_rooms_qr_codes.zip"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating QR codes: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

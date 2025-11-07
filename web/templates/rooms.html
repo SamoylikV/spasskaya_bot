@@ -7,9 +7,14 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="fas fa-door-open"></i> Управление номерами</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">
-                <i class="fas fa-plus"></i> Добавить номер
-            </button>
+            <div>
+                <button class="btn btn-success me-2" id="downloadAllQrBtn">
+                    <i class="fas fa-download"></i> Скачать все QR коды
+                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+                    <i class="fas fa-plus"></i> Добавить номер
+                </button>
+            </div>
         </div>
 
         <div class="card">
@@ -74,7 +79,7 @@
                     <div class="mb-3">
                         <label for="roomNumber" class="form-label">Номер комнаты *</label>
                         <input type="text" class="form-control" id="roomNumber" name="room_number" required>
-                        <div class="form-text">Введите номер комнаты (например: 101, 202)</div>
+                        <div class="form-text">Введите номер (например: 101) или диапазон (например: 201-240)</div>
                     </div>
                     <div class="mb-3">
                         <label for="roomDescription" class="form-label">Описание</label>
@@ -83,7 +88,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+                    <button type="submit" class="btn btn-primary" id="addRoomSubmitBtn">Добавить</button>
                 </div>
             </form>
         </div>
@@ -127,14 +132,19 @@
 document.addEventListener('DOMContentLoaded', function() {
     const addRoomForm = document.getElementById('addRoomForm');
     const roomsTable = document.getElementById('roomsTable');
+    const addRoomModal = document.getElementById('addRoomModal');
 
-    // Add room form submission
     addRoomForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const formData = new FormData(this);
         const roomNumber = formData.get('room_number');
         const description = formData.get('description');
+        const submitBtn = document.getElementById('addRoomSubmitBtn');
+        const originalText = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Добавление...';
 
         try {
             const response = await fetch('/api/rooms', {
@@ -142,17 +152,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData
             });
 
+            const result = await response.json();
+
             if (response.ok) {
-                showStatus('Номер успешно добавлен!', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('addRoomModal')).hide();
+                showStatus(result.message || 'Номер успешно добавлен!', 'success');
+                bootstrap.Modal.getInstance(addRoomModal).hide();
                 addRoomForm.reset();
-                location.reload(); // Refresh to show new room
+                location.reload();
             } else {
-                const error = await response.json();
-                showStatus('Ошибка: ' + error.detail, 'danger');
+                showStatus('Ошибка: ' + result.detail, 'danger');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         } catch (error) {
             showStatus('Ошибка при добавлении номера', 'danger');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
         }
     });
 
@@ -211,6 +226,36 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (error) {
                 qrContainer.innerHTML = '<div class="alert alert-danger">Ошибка при генерации QR кода</div>';
             }
+        }
+    });
+
+    document.getElementById('downloadAllQrBtn').addEventListener('click', async function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Генерация...';
+
+        try {
+            const response = await fetch('/api/rooms/qr/download-all');
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'all_rooms_qr_codes.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('QR коды успешно загружены!', 'success');
+            } else {
+                showStatus('Ошибка при генерации QR кодов', 'danger');
+            }
+        } catch (error) {
+            showStatus('Ошибка при загрузке QR кодов', 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     });
 });

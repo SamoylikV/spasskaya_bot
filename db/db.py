@@ -461,6 +461,7 @@ async def init_settings():
         settings = [
             ('timezone', 'Europe/Moscow', 'Часовой пояс для отображения времени'),
             ('admin_panel_url', 'http://localhost:8001', 'URL админ-панели для ссылок в уведомлениях'),
+            ('qr_code_text', 'Бот поддержки номера {room_number}', 'Текст на QR коде (используйте {room_number} для подстановки номера)'),
         ]
 
         for key, value, description in settings:
