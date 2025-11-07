@@ -286,7 +286,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
             notification_text += f"💬 Комментарий: {comment}\n"
 
         notification_text += f"\n🕗 Время: {time_str}"
-        notification_text += f"\n🔗 <a href=\"{admin_panel_url}/appeals/{appeal_id}\">Открыть в админ-панели</a>"
+        notification_text += f"\n\n🔗 {admin_panel_url}/appeals/{appeal_id}"
         logger.info(f"Admin panel URL: {admin_panel_url}/appeals/{appeal_id}")
 
         for recipient in recipients:
@@ -690,7 +690,7 @@ async def check_message_queue():
                             from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                             buttons = []
 
-                            if 'Ответ администратора' in message_text or 'Ваше обращение' in message_text:
+                            if 'Ответ администратора' in message_text or 'Ваше обращение' in message_text or 'ответил на вашу заявку' in message_text:
                                 reply_button_text = "✏️ Ответить"
                                 buttons.append([InlineKeyboardButton(text=reply_button_text, callback_data=f"user_reply:{msg['appeal_id']}")])
 
