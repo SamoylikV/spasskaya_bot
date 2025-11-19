@@ -145,6 +145,9 @@ async def appeals_page(
         'other': 'Прочее'
     }
     
+    appeals_enabled = await get_setting('appeals_enabled')
+    appeals_enabled = appeals_enabled != 'false' if appeals_enabled else True
+
     return templates.TemplateResponse("appeals.html", {
         "request": request,
         "appeals": appeals,
@@ -155,7 +158,8 @@ async def appeals_page(
         "room_filter": room,
         "search_filter": search,
         "request_type_filter": request_type,
-        "request_type_options": request_type_options
+        "request_type_options": request_type_options,
+        "appeals_enabled": appeals_enabled
     })
 
 @app.get("/appeals/{appeal_id}", response_class=HTMLResponse)
@@ -567,7 +571,6 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
         font_loaded = False
         font_size = 48
         
-        # Try multiple font paths for better Russian character support
         font_paths = [
             "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
             "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS
@@ -658,7 +661,6 @@ async def download_all_qr_codes(admin: str = Depends(get_current_admin)):
                 font_loaded = False
                 font_size = 48
                 
-                # Try multiple font paths for better Russian character support
                 font_paths = [
                     "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
                     "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS

@@ -6,6 +6,13 @@
 <div class="row mb-4">
     <div class="col-12">
         <h1 class="h3 mb-4"><i class="fas fa-envelope"></i> Обращения ({{ total_appeals }})</h1>
+        {% if not appeals_enabled %}
+        <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Внимание:</strong> Создание новых обращений отключено в настройках.
+            <a href="/settings" class="alert-link">Изменить настройки</a>
+        </div>
+        {% endif %}
     </div>
 </div>
 

@@ -462,6 +462,7 @@ async def init_settings():
             ('timezone', 'Europe/Moscow', 'Часовой пояс для отображения времени'),
             ('admin_panel_url', 'http://localhost:8001', 'URL админ-панели для ссылок в уведомлениях'),
             ('qr_code_text', 'Бот поддержки номера {room_number}', 'Текст на QR коде (используйте {room_number} для подстановки номера)'),
+            ('appeals_enabled', 'true', 'Включить/выключить возможность создания новых обращений'),
         ]
 
         for key, value, description in settings:
@@ -682,12 +683,14 @@ async def init_message_templates():
 
             ('user_message_notification', """💬 <b>Новое сообщение от пользователя</b>
 
-👤 Пользователь: @{username} (комната {room})
+👤 Пользователь: @{username} (ID: {user_id}, комната {room})
 📝 Сообщение: {message}
 
 🔔 Обращение #{appeal_id}
 
-🕗 Время: {time}""", 'Уведомление о новом сообщении пользователя')
+🕗 Время: {time}""", 'Уведомление о новом сообщении пользователя'),
+
+            ('appeals_disabled', '❌ Создание новых обращений временно отключено. Попробуйте позже.', 'Сообщение об отключенных обращениях')
         ]
 
         for key, text, description in templates:

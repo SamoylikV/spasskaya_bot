@@ -200,7 +200,7 @@ async def help_cmd(message: Message):
     await message.answer(help_text, parse_mode="HTML")
 
 
-async def send_user_message_notification(appeal_id, username, room, message):
+async def send_user_message_notification(appeal_id, username, user_id, room, message):
     try:
         recipients = await get_notification_recipients(active_only=True)
 
@@ -211,6 +211,7 @@ async def send_user_message_notification(appeal_id, username, room, message):
         if notification_template:
             notification_text = notification_template.format(
                 username=username or 'пользователь',
+                user_id=user_id,
                 room=room,
                 message=message[:100] + ('...' if len(message) > 100 else ''),
                 appeal_id=appeal_id,
@@ -219,7 +220,7 @@ async def send_user_message_notification(appeal_id, username, room, message):
         else:
             notification_text = f"""💬 <b>Новое сообщение от пользователя</b>
 
-👤 Пользователь: @{username or 'пользователь'} (комната {room})
+👤 Пользователь: @{username or 'пользователь'} (ID: {user_id}, комната {room})
 📝 Сообщение: {message[:100]}{'...' if len(message) > 100 else ''}
 
 🔔 Обращение #{appeal_id}
@@ -286,7 +287,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
             notification_text += f"💬 Комментарий: {comment}\n"
 
         notification_text += f"\n🕗 Время: {time_str}"
-        notification_text += f"\n\n🔗 {admin_panel_url}/appeals/{appeal_id}"
+        notification_text += f"\n\n🔗 <a href=\"{admin_panel_url}/appeals/{appeal_id}\">Открыть в админ-панели</a>"
         logger.info(f"Admin panel URL: {admin_panel_url}/appeals/{appeal_id}")
 
         for recipient in recipients:
@@ -552,7 +553,14 @@ async def process_service_request(event, state: FSMContext, comment: str = None)
         user_id = event.from_user.id
         username = event.from_user.username or str(user_id)
         message = event
-    
+
+    # Check if appeals are enabled
+    appeals_enabled = await get_setting('appeals_enabled')
+    if appeals_enabled and appeals_enabled.lower() == 'false':
+        disabled_msg = await get_message_template('appeals_disabled') or "❌ Создание новых обращений временно отключено. Попробуйте позже."
+        await message.answer(disabled_msg)
+        return
+
     data = await state.get_data()
     room = data.get("room", "не указан")
     service_text = data.get("service_text", "")
@@ -628,7 +636,7 @@ async def user_reply_text(message: Message, state: FSMContext):
 
     conn = await asyncpg.connect(DB_URL)
     try:
-        appeal = await conn.fetchrow("SELECT username, room FROM appeals WHERE id = $1", appeal_id)
+        appeal = await conn.fetchrow("SELECT user_id, username, room FROM appeals WHERE id = $1", appeal_id)
         if appeal:
             await conn.execute(
                 "UPDATE appeals SET status = 'new', updated_at = NOW() WHERE id = $1 AND status != 'new'",
@@ -638,7 +646,7 @@ async def user_reply_text(message: Message, state: FSMContext):
             logger.info(f"New user reply on appeal {appeal_id}: {text}")
             logger.info(f"Appeal {appeal_id} status updated to 'new' due to user reply")
 
-            await send_user_message_notification(appeal_id, appeal['username'], appeal['room'], text)
+            await send_user_message_notification(appeal_id, appeal['username'], appeal['user_id'], appeal['room'], text)
     finally:
         await conn.close()
 
