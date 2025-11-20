@@ -695,7 +695,7 @@ async def init_message_templates():
             await conn.execute("""
                 INSERT INTO message_templates (key, text, description)
                 VALUES ($1, $2, $3)
-                ON CONFLICT (key) DO NOTHING
+                ON CONFLICT (key) DO UPDATE SET text=$2, updated_at=CURRENT_TIMESTAMP
             """, key, text, description)
 
     finally:
