@@ -690,7 +690,6 @@ async def init_message_templates():
 
 🕗 Время: {time}""", 'Уведомление о новом сообщении пользователя'),
 
-            ('appeals_disabled', '❌ Создание новых обращений временно отключено. Попробуйте позже.', 'Сообщение об отключенных обращениях')
         ]
 
         for key, text, description in templates:

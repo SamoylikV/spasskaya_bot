@@ -554,12 +554,6 @@ async def process_service_request(event, state: FSMContext, comment: str = None)
         username = event.from_user.username or str(user_id)
         message = event
 
-    appeals_enabled = await get_setting('appeals_enabled')
-    if appeals_enabled and appeals_enabled.lower() == 'false':
-        disabled_msg = await get_message_template('appeals_disabled') or "❌ Создание новых обращений временно отключено. Попробуйте позже."
-        await message.answer(disabled_msg)
-        return
-
     data = await state.get_data()
     room = data.get("room", "не указан")
     service_text = data.get("service_text", "")
