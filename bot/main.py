@@ -271,12 +271,23 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
 
         notification_template = await get_message_template('new_appeal_notification')
         if notification_template:
-            notification_text = notification_template.format(
-                appeal_id=appeal_id,
-                room=room,
-                service_name=service_name,
-                description=description
-            )
+            # Handle both old and new template formats
+            try:
+                notification_text = notification_template.format(
+                    appeal_id=appeal_id,
+                    room=room,
+                    service_name=service_name,
+                    description=description
+                )
+            except KeyError:
+                # Fallback for old template with time
+                notification_text = notification_template.format(
+                    appeal_id=appeal_id,
+                    room=room,
+                    service_name=service_name,
+                    description=description,
+                    time=time_str
+                )
         else:
             notification_text = f"""🔔 <b>Новая заявка #{appeal_id}</b>
 
