@@ -70,6 +70,21 @@
                                                 rows="2"
                                                 placeholder="Используйте {room_number} для подстановки номера комнаты">{{ setting.value }}</textarea>
                                             <small class="text-muted">Используйте {room_number} для подстановки номера комнаты</small>
+                                        {% elif setting.key == 'appeals_enabled' %}
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input setting-toggle" type="checkbox"
+                                                       data-key="{{ setting.key }}"
+                                                       {% if setting.value != 'false' %}checked{% endif %}
+                                                       id="toggle-{{ setting.key }}">
+                                                <label class="form-check-label" for="toggle-{{ setting.key }}">
+                                                    {% if setting.value != 'false' %}
+                                                        <span class="badge bg-success">Включено</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">Отключено</span>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                            <input type="hidden" class="setting-value" data-key="{{ setting.key }}" value="{{ setting.value }}">
                                         {% else %}
                                             <input type="text"
                                                    class="form-control setting-value"
@@ -106,6 +121,25 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle toggle switches
+    document.querySelectorAll('.setting-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const key = this.dataset.key;
+            const hiddenInput = document.querySelector(`.setting-value[data-key="${key}"]`);
+            const badge = this.parentElement.querySelector('.badge');
+
+            if (this.checked) {
+                hiddenInput.value = 'true';
+                badge.className = 'badge bg-success';
+                badge.textContent = 'Включено';
+            } else {
+                hiddenInput.value = 'false';
+                badge.className = 'badge bg-danger';
+                badge.textContent = 'Отключено';
+            }
+        });
+    });
+
     document.querySelectorAll('.save-setting').forEach(button => {
         button.addEventListener('click', async function() {
             const key = this.dataset.key;
@@ -147,7 +181,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (const input of inputs) {
             const key = input.dataset.key;
-            const value = input.value.trim();
+            let value = input.value.trim();
+
+            // For toggle switches, ensure we get the correct value
+            const toggle = document.querySelector(`.setting-toggle[data-key="${key}"]`);
+            if (toggle) {
+                value = toggle.checked ? 'true' : 'false';
+            }
 
             if (!value) {
                 errorCount++;

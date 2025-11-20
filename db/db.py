@@ -705,7 +705,6 @@ async def init_message_templates():
 
 
 async def get_message_template(key):
-    """Get message template by key"""
     conn = await asyncpg.connect(DB_URL)
     try:
         row = await conn.fetchrow("SELECT text FROM message_templates WHERE key=$1", key)
@@ -715,7 +714,6 @@ async def get_message_template(key):
 
 
 async def get_all_message_templates():
-    """Get all message templates"""
     conn = await asyncpg.connect(DB_URL)
     try:
         rows = await conn.fetch("SELECT * FROM message_templates ORDER BY key")
@@ -725,7 +723,6 @@ async def get_all_message_templates():
 
 
 async def update_message_template(key, text):
-    """Update message template"""
     conn = await asyncpg.connect(DB_URL)
     try:
         await conn.execute("""

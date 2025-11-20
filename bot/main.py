@@ -554,7 +554,6 @@ async def process_service_request(event, state: FSMContext, comment: str = None)
         username = event.from_user.username or str(user_id)
         message = event
 
-    # Check if appeals are enabled
     appeals_enabled = await get_setting('appeals_enabled')
     if appeals_enabled and appeals_enabled.lower() == 'false':
         disabled_msg = await get_message_template('appeals_disabled') or "❌ Создание новых обращений временно отключено. Попробуйте позже."

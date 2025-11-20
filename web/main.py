@@ -431,7 +431,6 @@ async def update_message(template_key: str, request: Request, admin: str = Depen
 
 @app.get("/api/messages/quick-reply/{request_type}")
 async def get_quick_reply(request_type: str, admin: str = Depends(get_current_admin)):
-    """Get quick reply template for specific request type"""
     template_key = f"reply_{request_type}"
     text = await get_message_template(template_key)
     if not text:
