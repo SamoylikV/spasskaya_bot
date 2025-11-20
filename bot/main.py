@@ -246,7 +246,7 @@ async def send_user_message_notification(appeal_id, username, user_id, room, mes
         logger.error(f"Error in send_user_message_notification: {e}")
 
 
-async def send_new_appeal_notification(appeal_id, room, service_type, description, comment=None):
+async def send_new_appeal_notification(appeal_id, user_id, username, room, service_type, description, comment=None):
     try:
         recipients = await get_notification_recipients(active_only=True)
 
@@ -269,11 +269,18 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
 
         admin_panel_url = await get_setting('admin_panel_url') or 'http://localhost:8001'
 
+        # Create user link
+        if username:
+            user_link = f'<a href="https://t.me/{username}">@{username}</a>'
+        else:
+            user_link = f'пользователь (ID: {user_id})'
+
         notification_template = await get_message_template('new_appeal_notification')
         if notification_template:
             # Handle both old and new template formats
             try:
                 notification_text = notification_template.format(
+                    user_link=user_link,
                     appeal_id=appeal_id,
                     room=room,
                     service_name=service_name,
@@ -282,6 +289,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
             except KeyError:
                 # Fallback for old template with time
                 notification_text = notification_template.format(
+                    user_link=user_link,
                     appeal_id=appeal_id,
                     room=room,
                     service_name=service_name,
@@ -291,6 +299,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
         else:
             notification_text = f"""🔔 <b>Новая заявка #{appeal_id}</b>
 
+👤 Пользователь: {user_link}
 🛏️ Комната: <b>{room}</b>
 📋 Тип: {service_name}
 ✉️ Описание: {description}
@@ -329,7 +338,7 @@ async def create_service_request(user_id, username, room, service_type, descript
         if optional_comment:
             await add_message(appeal_id, "user", f"Комментарий: {optional_comment}")
 
-        await send_new_appeal_notification(appeal_id, room, service_type, description, optional_comment)
+        await send_new_appeal_notification(appeal_id, user_id, username, room, service_type, description, optional_comment)
     finally:
         await conn.close()
     return appeal_id

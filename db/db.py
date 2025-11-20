@@ -621,6 +621,7 @@ async def init_message_templates():
 
             ('new_appeal_notification', """🔔 <b>Новая заявка #{appeal_id}</b>
 
+👤 Пользователь: {user_link}
 🛏️ Комната: <b>{room}</b>
 📋 Тип: {service_name}
 ✉️ Описание: {description}""", 'Уведомление о новой заявке для администраторов'),
