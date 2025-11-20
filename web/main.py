@@ -188,7 +188,6 @@ async def update_appeal_status(appeal_id: int, request: Request, admin: str = De
         if not status:
             raise HTTPException(status_code=400, detail="Status is required")
 
-        # Check if appeals management is disabled and status change is not allowed
         if status in ['received', 'declined']:
             appeals_enabled = await get_setting('appeals_enabled')
             appeals_enabled = appeals_enabled != 'false' if appeals_enabled else True
@@ -306,7 +305,6 @@ async def reply_to_appeal(appeal_id: int, request: Request, admin: str = Depends
 
 @app.post("/api/appeals/bulk_update")
 async def bulk_update_appeals(appeal_ids: List[int], status: str, admin: str = Depends(get_current_admin)):
-    # Check if appeals management is disabled and status change is not allowed
     if status in ['received', 'declined']:
         appeals_enabled = await get_setting('appeals_enabled')
         appeals_enabled = appeals_enabled != 'false' if appeals_enabled else True

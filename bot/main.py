@@ -204,8 +204,8 @@ async def send_user_message_notification(appeal_id, username, user_id, room, mes
     try:
         recipients = await get_notification_recipients(active_only=True)
 
-        current_time = await get_current_time_in_timezone()
-        time_str = await format_time_for_display(current_time)
+        current_time = get_current_time_in_timezone()
+        time_str = format_time_for_display(current_time)
 
         notification_template = await get_message_template('user_message_notification')
         if notification_template:
@@ -260,8 +260,8 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
 
         service_name = service_type_names.get(service_type, service_type)
 
-        current_time = await get_current_time_in_timezone()
-        time_str = await format_time_for_display(current_time)
+        current_time = get_current_time_in_timezone()
+        time_str = format_time_for_display(current_time)
 
         admin_panel_url = await get_setting('admin_panel_url') or 'http://localhost:8001'
 
