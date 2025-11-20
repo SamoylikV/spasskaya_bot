@@ -165,14 +165,18 @@ async def appeals_page(
 @app.get("/appeals/{appeal_id}", response_class=HTMLResponse)
 async def appeal_detail(request: Request, appeal_id: int, admin: str = Depends(get_current_admin)):
     appeal, messages = await get_appeal_with_messages(appeal_id)
-    
+
     if not appeal:
         raise HTTPException(status_code=404, detail="Appeal not found")
-    
+
+    appeals_enabled = await get_setting('appeals_enabled')
+    appeals_enabled = appeals_enabled != 'false' if appeals_enabled else True
+
     return templates.TemplateResponse("appeal_detail.html", {
         "request": request,
         "appeal": appeal,
-        "messages": messages
+        "messages": messages,
+        "appeals_enabled": appeals_enabled
     })
 
 @app.post("/api/appeals/{appeal_id}/status")
@@ -183,6 +187,13 @@ async def update_appeal_status(appeal_id: int, request: Request, admin: str = De
 
         if not status:
             raise HTTPException(status_code=400, detail="Status is required")
+
+        # Check if appeals management is disabled and status change is not allowed
+        if status in ['received', 'declined']:
+            appeals_enabled = await get_setting('appeals_enabled')
+            appeals_enabled = appeals_enabled != 'false' if appeals_enabled else True
+            if not appeals_enabled:
+                raise HTTPException(status_code=403, detail="Status changes are currently disabled. Only closing appeals is allowed.")
 
         key = f"appeal:{appeal_id}:status:{status}"
         now = datetime.now().isoformat()
@@ -295,6 +306,13 @@ async def reply_to_appeal(appeal_id: int, request: Request, admin: str = Depends
 
 @app.post("/api/appeals/bulk_update")
 async def bulk_update_appeals(appeal_ids: List[int], status: str, admin: str = Depends(get_current_admin)):
+    # Check if appeals management is disabled and status change is not allowed
+    if status in ['received', 'declined']:
+        appeals_enabled = await get_setting('appeals_enabled')
+        appeals_enabled = appeals_enabled != 'false' if appeals_enabled else True
+        if not appeals_enabled:
+            raise HTTPException(status_code=403, detail="Bulk status changes are currently disabled. Only closing appeals is allowed.")
+
     await bulk_update_status(appeal_ids, status)
     
     await manager.broadcast(json.dumps({

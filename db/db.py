@@ -462,7 +462,7 @@ async def init_settings():
             ('timezone', 'Europe/Moscow', 'Часовой пояс для отображения времени'),
             ('admin_panel_url', 'http://localhost:8001', 'URL админ-панели для ссылок в уведомлениях'),
             ('qr_code_text', 'Бот поддержки номера {room_number}', 'Текст на QR коде (используйте {room_number} для подстановки номера)'),
-            ('appeals_enabled', 'true', 'Включить/выключить возможность создания новых обращений'),
+            ('appeals_enabled', 'true', 'Включить/выключить управление обращениями (отключение запрещает изменение статусов, но позволяет закрывать обращения)'),
         ]
 
         for key, value, description in settings:

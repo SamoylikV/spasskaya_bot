@@ -3,13 +3,14 @@
 {% block title %}Обращения - Spasskaya Hotel Admin{% endblock %}
 
 {% block content %}
+<div id="appeals-data" data-appeals-enabled="{% if appeals_enabled %}true{% else %}false{% endif %}"></div>
 <div class="row mb-4">
     <div class="col-12">
         <h1 class="h3 mb-4"><i class="fas fa-envelope"></i> Обращения ({{ total_appeals }})</h1>
         {% if not appeals_enabled %}
         <div class="alert alert-warning" role="alert">
             <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>Внимание:</strong> Создание новых обращений отключено в настройках.
+            <strong>Внимание:</strong> Управление обращениями отключено в настройках. Доступно только закрытие обращений (статус "Выполнено").
             <a href="/settings" class="alert-link">Изменить настройки</a>
         </div>
         {% endif %}
@@ -64,13 +65,13 @@
                     <i class="fas fa-check-square"></i> Выбрать все
                 </button>
                 <div class="btn-group ms-2" role="group">
-                    <button type="button" class="btn btn-success" id="bulkReceived" disabled>
+                    <button type="button" class="btn btn-success {% if not appeals_enabled %}disabled{% endif %}" id="bulkReceived" disabled>
                         <i class="fas fa-play"></i> В работу
                     </button>
                     <button type="button" class="btn btn-primary" id="bulkDone" disabled>
                         <i class="fas fa-check"></i> Выполнено
                     </button>
-                    <button type="button" class="btn btn-danger" id="bulkDeclined" disabled>
+                    <button type="button" class="btn btn-danger {% if not appeals_enabled %}disabled{% endif %}" id="bulkDeclined" disabled>
                         <i class="fas fa-times"></i> Отклонено
                     </button>
                 </div>
@@ -148,13 +149,13 @@
                                                 <i class="fas fa-cogs"></i>
                                             </button>
                                             <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item status-btn" href="#" data-appeal-id="{{ appeal.id }}" data-status="received">
+                                                <li><a class="dropdown-item status-btn {% if not appeals_enabled %}disabled{% endif %}" href="#" data-appeal-id="{{ appeal.id }}" data-status="received">
                                                     <i class="fas fa-play text-info"></i> В работу
                                                 </a></li>
                                                 <li><a class="dropdown-item status-btn" href="#" data-appeal-id="{{ appeal.id }}" data-status="done">
                                                     <i class="fas fa-check text-success"></i> Выполнено
                                                 </a></li>
-                                                <li><a class="dropdown-item status-btn" href="#" data-appeal-id="{{ appeal.id }}" data-status="declined">
+                                                <li><a class="dropdown-item status-btn {% if not appeals_enabled %}disabled{% endif %}" href="#" data-appeal-id="{{ appeal.id }}" data-status="declined">
                                                     <i class="fas fa-times text-danger"></i> Отклонено
                                                 </a></li>
                                             </ul>
@@ -246,11 +247,14 @@ document.querySelectorAll('.appeal-checkbox').forEach(checkbox => {
 function updateBulkButtons() {
     const count = selectedAppeals.size;
     document.getElementById('selectedCount').textContent = count;
-    
-    const bulkButtons = ['bulkReceived', 'bulkDone', 'bulkDeclined'];
-    bulkButtons.forEach(id => {
-        document.getElementById(id).disabled = count === 0;
-    });
+
+    // Check if appeals management is disabled
+    const appealsData = document.getElementById('appeals-data');
+    const appealsEnabled = appealsData ? appealsData.dataset.appealsEnabled === 'true' : true;
+
+    document.getElementById('bulkReceived').disabled = count === 0 || !appealsEnabled;
+    document.getElementById('bulkDone').disabled = count === 0;
+    document.getElementById('bulkDeclined').disabled = count === 0 || !appealsEnabled;
 }
 
 document.getElementById('bulkReceived').addEventListener('click', () => bulkUpdateStatus('received'));
