@@ -587,10 +587,10 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
         font_size = 48
         
         font_paths = [
-            "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux
+            "/System/Library/Fonts/Supplemental/Arial.ttf", 
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         ]
         
         for font_path in font_paths:
@@ -677,12 +677,11 @@ async def download_all_qr_codes(admin: str = Depends(get_current_admin)):
                 font_size = 48
                 
                 font_paths = [
-                    "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
-                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS
-                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux
-                    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux
+                    "/System/Library/Fonts/Supplemental/Arial.ttf", 
+                    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 
+                    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 
                 ]
-                
                 for font_path in font_paths:
                     try:
                         font = ImageFont.truetype(font_path, font_size)

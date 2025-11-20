@@ -207,25 +207,29 @@ async def send_user_message_notification(appeal_id, username, user_id, room, mes
         current_time = get_current_time_in_timezone()
         time_str = format_time_for_display(current_time)
 
+        if username:
+            user_link = f'<a href="https://t.me/{username}">@{username}</a>'
+        else:
+            user_link = f'пользователь (ID: {user_id})'
+
         notification_template = await get_message_template('user_message_notification')
         if notification_template:
             notification_text = notification_template.format(
-                username=username or 'пользователь',
+                user_link=user_link,
                 user_id=user_id,
                 room=room,
                 message=message[:100] + ('...' if len(message) > 100 else ''),
-                appeal_id=appeal_id,
-                time=time_str
+                appeal_id=appeal_id
             )
         else:
             notification_text = f"""💬 <b>Новое сообщение от пользователя</b>
 
-👤 Пользователь: @{username or 'пользователь'} (ID: {user_id}, комната {room})
+👤 Пользователь: {user_link} (комната {room})
 📝 Сообщение: {message[:100]}{'...' if len(message) > 100 else ''}
 
-🔔 Обращение #{appeal_id}
+🔔 Обращение #{appeal_id}"""
 
-🕗 Время: {time_str}"""
+        notification_text += f"\n\n🕗 Время: {time_str}"
 
         for recipient in recipients:
             try:
@@ -271,9 +275,7 @@ async def send_new_appeal_notification(appeal_id, room, service_type, descriptio
                 appeal_id=appeal_id,
                 room=room,
                 service_name=service_name,
-                description=description,
-                time=time_str,
-                admin_url=admin_panel_url
+                description=description
             )
         else:
             notification_text = f"""🔔 <b>Новая заявка #{appeal_id}</b>
