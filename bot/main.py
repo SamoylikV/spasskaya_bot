@@ -269,33 +269,21 @@ async def send_new_appeal_notification(appeal_id, user_id, username, room, servi
 
         admin_panel_url = await get_setting('admin_panel_url') or 'http://localhost:8001'
 
-        # Create user link
         if username:
-            user_link = f'<a href="https://t.me/{username}">@{username}</a>'
+            user_link = f'<a href="https://t.me/{username}">@{username}</a> (ID: {user_id})'
         else:
             user_link = f'пользователь (ID: {user_id})'
 
         notification_template = await get_message_template('new_appeal_notification')
         if notification_template:
-            # Handle both old and new template formats
-            try:
-                notification_text = notification_template.format(
-                    user_link=user_link,
-                    appeal_id=appeal_id,
-                    room=room,
-                    service_name=service_name,
-                    description=description
-                )
-            except KeyError:
-                # Fallback for old template with time
-                notification_text = notification_template.format(
-                    user_link=user_link,
-                    appeal_id=appeal_id,
-                    room=room,
-                    service_name=service_name,
-                    description=description,
-                    time=time_str
-                )
+            notification_text = notification_template.format(
+                user_link=user_link,
+                appeal_id=appeal_id,
+                room=room,
+                service_name=service_name,
+                description=description,
+                time=time_str
+            )
         else:
             notification_text = f"""🔔 <b>Новая заявка #{appeal_id}</b>
 
@@ -303,12 +291,13 @@ async def send_new_appeal_notification(appeal_id, user_id, username, room, servi
 🛏️ Комната: <b>{room}</b>
 📋 Тип: {service_name}
 ✉️ Описание: {description}
+
+🕗 Время: {time_str}
 """
 
         if comment:
             notification_text += f"💬 Комментарий: {comment}\n"
 
-        notification_text += f"\n🕗 Время: {time_str}"
         notification_text += f"\n\n🔗 <a href=\"{admin_panel_url}/appeals/{appeal_id}\">Открыть в админ-панели</a>"
         logger.info(f"Admin panel URL: {admin_panel_url}/appeals/{appeal_id}")
 
