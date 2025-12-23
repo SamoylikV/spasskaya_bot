@@ -340,13 +340,13 @@ async def service_iron(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service_text=service_text, service_type="iron")
     add_comment_text = await get_message_template('add_comment') or "💬 Добавить комментарий"
     send_no_comment_text = await get_message_template('send_no_comment') or "✅ Отправить без комментария"
-    comment_question = await get_message_template('comment_question') or "Хотите добавить комментарий к заявке?"
+    explanation = await get_message_template('iron_explanation') or "Вы заказали утюг и гладильную доску. Хотите добавить дополнительные пожелания?"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=add_comment_text, callback_data="add_comment")],
         [InlineKeyboardButton(text=send_no_comment_text, callback_data="send_no_comment")]
     ])
-    await callback.message.answer(comment_question, reply_markup=keyboard)
+    await callback.message.answer(explanation, reply_markup=keyboard)
 
 @router.callback_query(F.data == "service_laundry")
 async def service_laundry(callback: CallbackQuery, state: FSMContext):
@@ -355,13 +355,13 @@ async def service_laundry(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service_text=service_text, service_type="laundry")
     add_comment_text = await get_message_template('add_comment') or "💬 Добавить комментарий"
     send_no_comment_text = await get_message_template('send_no_comment') or "✅ Отправить без комментария"
-    comment_question = await get_message_template('comment_question') or "Хотите добавить комментарий к заявке?"
+    explanation = await get_message_template('laundry_explanation') or "Вы заказали услуги прачечной. Хотите добавить дополнительные пожелания?"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=add_comment_text, callback_data="add_comment")],
         [InlineKeyboardButton(text=send_no_comment_text, callback_data="send_no_comment")]
     ])
-    await callback.message.answer(comment_question, reply_markup=keyboard)
+    await callback.message.answer(explanation, reply_markup=keyboard)
 
 @router.callback_query(F.data == "service_technical")
 async def service_technical(callback: CallbackQuery, state: FSMContext):
@@ -389,13 +389,13 @@ async def tech_ac(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service_text=service_text, service_type="technical_ac")
     add_comment_text = await get_message_template('add_comment') or "💬 Добавить комментарий"
     send_no_comment_text = await get_message_template('send_no_comment') or "✅ Отправить без комментария"
-    comment_question = await get_message_template('comment_question') or "Хотите добавить комментарий к заявке?"
+    explanation = await get_message_template('ac_explanation') or "Вы сообщили о проблеме с кондиционером. Хотите добавить дополнительные детали?"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=add_comment_text, callback_data="add_comment")],
         [InlineKeyboardButton(text=send_no_comment_text, callback_data="send_no_comment")]
     ])
-    await callback.message.answer(comment_question, reply_markup=keyboard)
+    await callback.message.answer(explanation, reply_markup=keyboard)
 
 @router.callback_query(F.data == "tech_wifi")
 async def tech_wifi(callback: CallbackQuery, state: FSMContext):
@@ -404,13 +404,13 @@ async def tech_wifi(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service_text=service_text, service_type="technical_wifi")
     add_comment_text = await get_message_template('add_comment') or "💬 Добавить комментарий"
     send_no_comment_text = await get_message_template('send_no_comment') or "✅ Отправить без комментария"
-    comment_question = await get_message_template('comment_question') or "Хотите добавить комментарий к заявке?"
+    explanation = await get_message_template('wifi_explanation') or "Вы сообщили о проблеме с WiFi. Хотите добавить дополнительные детали?"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=add_comment_text, callback_data="add_comment")],
         [InlineKeyboardButton(text=send_no_comment_text, callback_data="send_no_comment")]
     ])
-    await callback.message.answer(comment_question, reply_markup=keyboard)
+    await callback.message.answer(explanation, reply_markup=keyboard)
 
 @router.callback_query(F.data == "tech_tv")
 async def tech_tv(callback: CallbackQuery, state: FSMContext):
@@ -419,13 +419,13 @@ async def tech_tv(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service_text=service_text, service_type="technical_tv")
     add_comment_text = await get_message_template('add_comment') or "💬 Добавить комментарий"
     send_no_comment_text = await get_message_template('send_no_comment') or "✅ Отправить без комментария"
-    comment_question = await get_message_template('comment_question') or "Хотите добавить комментарий к заявке?"
+    explanation = await get_message_template('tv_explanation') or "Вы сообщили о проблеме с телевизором. Хотите добавить дополнительные детали?"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=add_comment_text, callback_data="add_comment")],
         [InlineKeyboardButton(text=send_no_comment_text, callback_data="send_no_comment")]
     ])
-    await callback.message.answer(comment_question, reply_markup=keyboard)
+    await callback.message.answer(explanation, reply_markup=keyboard)
 
 @router.callback_query(F.data == "tech_other")
 async def tech_other(callback: CallbackQuery, state: FSMContext):
@@ -498,13 +498,13 @@ async def connect_restaurant(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service_text=service_text, service_type="restaurant_call")
     add_comment_text = await get_message_template('add_comment') or "💬 Добавить комментарий"
     send_no_comment_text = await get_message_template('send_no_comment') or "✅ Отправить без комментария"
-    comment_question = await get_message_template('comment_question') or "Хотите добавить комментарий к заявке?"
+    explanation = await get_message_template('restaurant_call_explanation') or "Вы хотите соединиться с рестораном. Хотите добавить дополнительные пожелания?"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=add_comment_text, callback_data="add_comment")],
         [InlineKeyboardButton(text=send_no_comment_text, callback_data="send_no_comment")]
     ])
-    await callback.message.answer(comment_question, reply_markup=keyboard)
+    await callback.message.answer(explanation, reply_markup=keyboard)
 
 @router.callback_query(F.data == "service_other")
 async def service_other(callback: CallbackQuery, state: FSMContext):
