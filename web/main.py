@@ -571,7 +571,18 @@ async def generate_qr_code(room_number: str, admin: str = Depends(get_current_ad
         qr.add_data(qr_url)
         qr.make(fit=True)
 
-        img = qr.make_image(fill_color=(0,0,0,255), back_color=(255,255,255,0))
+        img = qr.make_image(fill_color="black", back_color="white")
+        img = img.convert('RGBA')
+
+        # Make white background transparent
+        data = img.getdata()
+        new_data = []
+        for item in data:
+            if item[:3] == (255, 255, 255):  # white
+                new_data.append((255, 255, 255, 0))  # transparent
+            else:
+                new_data.append(item)
+        img.putdata(new_data)
 
         qr_setting = await get_setting('qr_code_text') or f"Бот поддержки номера {room_number}"
         text = qr_setting.replace('{room_number}', room_number)
@@ -660,7 +671,18 @@ async def download_all_qr_codes(admin: str = Depends(get_current_admin)):
                 qr.add_data(qr_url)
                 qr.make(fit=True)
 
-                img = qr.make_image(fill_color=(0,0,0,255), back_color=(255,255,255,0))
+                img = qr.make_image(fill_color="black", back_color="white")
+                img = img.convert('RGBA')
+
+                # Make white background transparent
+                data = img.getdata()
+                new_data = []
+                for item in data:
+                    if item[:3] == (255, 255, 255):  # white
+                        new_data.append((255, 255, 255, 0))  # transparent
+                    else:
+                        new_data.append(item)
+                img.putdata(new_data)
 
                 qr_setting = await get_setting('qr_code_text') or f"Бот поддержки номера {room_number}"
                 text = qr_setting.replace('{room_number}', room_number)
