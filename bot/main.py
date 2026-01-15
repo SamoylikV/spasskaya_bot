@@ -69,14 +69,14 @@ async def start(message: Message, command: CommandObject, state: FSMContext):
             return
 
         await state.update_data(room=args)
-        await send_welcome_with_photo(message)
+        await send_welcome_with_photo(message, include_room_prompt=False)
         await show_service_menu(message, state)
         return
 
     await show_main_menu(message)
     await state.set_state(RoomInput.waiting_room)
 
-async def send_welcome_with_photo(message: Message):
+async def send_welcome_with_photo(message: Message, include_room_prompt=True):
     welcome_text = await get_message_template('welcome_text')
     if not welcome_text:
         welcome_text = """
@@ -88,9 +88,9 @@ async def send_welcome_with_photo(message: Message):
 🍽 Ознакомиться с меню ресторана
 🔧 Сообщить о технических проблемах
 📞 Связаться с нашими службами
-
-Для начала работы укажите номер вашей комнаты.
 """
+        if include_room_prompt:
+            welcome_text += "\n\nДля начала работы укажите номер вашей комнаты."
 
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
